@@ -1,0 +1,180 @@
+# !/usr/bin/env python
+# -*- coding:utf-8 -*-
+# author : zerodel
+# Readme:
+#
+import copy
+import os
+import os.path
+
+import py.body.cli_opts
+import py.body.default_values
+import py.body.utilities
+import py.body.worker
+from py.body.cli_opts import is_suitable_path_with_prefix
+
+_DESC_SAMPLE_NAME = """The name of the sample analyzed.
+All output files are prefixed by this name (e.g., sample_name.genes.results)"""
+
+_DESC_EXPRESSION_REFERENCE_NAME = """The name of the reference used.
+The user must have run 'rsem-prepare-reference' with this reference_name before running this program."""
+
+_DESC_REFERENCE_NAME = """The name of the reference used.
+RSEM will generate several reference-related files that are prefixed by this name.
+This name can contain path information (e.g. '/ref/mm9').
+"""
+
+_DESC_REFERENCE_FASTA_FILES = """Either a comma-separated list of Multi-FASTA formatted files OR a directory name.
+If a directory name is specified, RSEM will read all files with suffix ".fa" or ".fasta" in this directory.
+The files should contain either the sequences of transcripts or an entire genome, depending on whether the '--gtf' option is used.
+"""
+
+__doc__ = ''' wrapper of RSEM cmd line options
+'''
+__author__ = 'zerodel'
+
+INDEX_SECTION = "RSEM_INDEX"
+QUANTIFY_SECTION = "RSEM_QUANTIFY"
+
+_ESSENTIAL_ARGS_REFERENCE = "{reference_fasta_files} {reference_name}"
+_ESSENTIAL_ARGS_QUANTIFICATION = "{reference_name} {sample_name}"
+_RSEM_REFERENCE_SUFFIX = [".ti", ".grp", ".seq"]
+
+
+def confirm_rsem_style_name_folder(rsem_style_folder_prefix):
+    folder, prefix = os.path.split(rsem_style_folder_prefix)
+    if not os.path.isdir(folder):
+        raise FileNotFoundError("ERROR@RSEM: RSEM style reference/output folder not exist")
+
+
+def is_path_contain_index(prefix_reference):
+    files = [prefix_reference + suffix for suffix in _RSEM_REFERENCE_SUFFIX]
+    return all([os.path.exists(refer_file) for refer_file in files])
+
+
+def get_index_path(updated_para):
+    return updated_para["reference_name"]
+
+
+def interpret_index_path(index_path):
+    if index_path:
+        return {"reference_name": index_path}
+    else:
+        return {}
+
+
+def interpret_seq_files(input_files):
+    if isinstance(input_files, list):
+        return {"upstream_read_file": input_files[0],
+                "downstream_read_file": input_files[-1]}
+    elif isinstance(input_files, str):
+        if input_files.endswith(".bam"):
+            return {"input": input_files}
+        else:
+            return {"upstream_read_file": input_files}
+    else:
+        return {}
+
+
+def index(para_config=None, *args, **kwargs):
+    opts_index_rsem_raw = py.body.cli_opts.merge_parameters(kwargs, para_config, INDEX_SECTION)
+
+    opts_index_rsem = copy.copy(opts_index_rsem_raw)
+    _option_check_index_rsem(opts_index_rsem)
+
+    cmd = _get_cmd_make_index(opts_index_rsem)
+
+    if not is_path_contain_index(get_index_path(opts_index_rsem)):
+        py.body.worker.run(cmd)
+    else:
+        print("Report: already have a RSEM index in {}".format(get_index_path(opts_index_rsem)))
+
+    return opts_index_rsem_raw
+
+
+def _get_cmd_make_index(updated_para):
+
+    cmd_prepare_reference = "{rsem_bin_prepare_reference}".format(**updated_para)
+
+    py.body.utilities.check_binary_executable(cmd_prepare_reference)
+
+    cmd_prepare_reference += py.body.cli_opts.cat_options(updated_para, updated_para)
+    cmd_prepare_reference += _ESSENTIAL_ARGS_REFERENCE.format(**updated_para)
+
+    return cmd_prepare_reference
+
+
+def _option_check_index_rsem(updated_para):
+    with py.body.cli_opts.OptionChecker(updated_para) as opt_checker:
+
+        opt_checker.must_have("reference_fasta_files", os.path.exists,
+                              FileNotFoundError("Error: fasta reference file not found as rsem reference"),
+                              _DESC_REFERENCE_FASTA_FILES)
+
+        opt_checker.must_have("reference_name", is_suitable_path_with_prefix,
+                              FileNotFoundError("Error: reference_name not specified"),
+                              _DESC_REFERENCE_NAME)
+
+
+def _get_cmd_calculate_expression(options):
+    cmd_string_quantify = "{}".format(options.pop("rsem_bin_calculate_expression"))
+    cmd_suffix = "{reference_name} {sample_name}".format(reference_name=options.pop("reference_name"),
+                                                         sample_name=options.pop("sample_name"))
+
+    py.body.utilities.check_binary_executable(cmd_string_quantify.strip())
+    # decide input mode .
+    if "upstream_read_file" in options and options["upstream_read_file"]:
+        if "downstream_read_file" in options and options["downstream_read_file"]:
+            cmd_suffix = "--paired-end {upstream_read_file} {downstream_read_file} ".format(
+                upstream_read_file=options.pop("upstream_read_file"),
+                downstream_read_file=options.pop("downstream_read_file")) + cmd_suffix
+
+        else:
+            cmd_suffix = "{upstream_read_file} ".format(
+                upstream_read_file=options.pop("upstream_read_file")) + cmd_suffix
+
+    elif "alignment" in options and options["alignment"]:
+        mapping_result_path = options.pop("alignment")
+        is_paired_end = "--paired-end" if py.body.utilities.is_paired(mapping_result_path) else ""
+        cmd_suffix = " ".join(["--alignments ", is_paired_end, mapping_result_path, cmd_suffix])
+
+    elif "seqs" in options and options["seqs"]:
+        seqs = [x for x in options.pop("seqs").strip().split() if x]
+        is_paired_seqs = "--paired-end" if len(seqs) == 2 else ""
+        cmd_suffix = " ".join([is_paired_seqs, seqs])
+    else:
+        raise KeyError("Error : no argument specifying input file for rsem quantification")
+
+    cmd_string_quantify = " ".join([cmd_string_quantify, py.body.cli_opts.all_options(options), cmd_suffix])
+    return cmd_string_quantify
+
+
+def _option_check_quantify_rsem(updated_para):
+    with py.body.cli_opts.OptionChecker(updated_para) as quantify_opt_check:
+        quantify_opt_check.must_have("reference_name", is_path_contain_index,
+                                     FileNotFoundError("ERROR: rsem reference file not specified"),
+                                     _DESC_EXPRESSION_REFERENCE_NAME)
+        quantify_opt_check.must_have("sample_name", is_suitable_path_with_prefix,
+                                     FileNotFoundError("ERROR: rsem sample file not specified"), _DESC_SAMPLE_NAME)
+
+
+def quantify(para_config=None, *args, **kwargs):
+    opts_quantify_rsem = py.body.cli_opts.merge_parameters(kwargs, para_config, QUANTIFY_SECTION)
+
+    _option_check_quantify_rsem(opts_quantify_rsem)
+
+    cmd = _get_cmd_calculate_expression(opts_quantify_rsem)
+
+    print(cmd)
+    py.body.worker.run(cmd)
+
+    return opts_quantify_rsem
+
+
+if __name__ == "__main__":
+    import sys
+
+    if len(sys.argv) < 2:
+        print(__doc__)
+    else:
+        pass
