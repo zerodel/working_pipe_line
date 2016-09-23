@@ -84,7 +84,7 @@ def make_parameters_for_this_job(para_dict, job_id, tap_root):
     par["KNIFE"]["read_directory"] = _put_it_under(_fq_path)
     par["KNIFE"]["alignment_parent_directory"] = _put_it_under(_detection_report_path)
 
-    _logger.debug("paramters: %s" % str(par))
+    _logger.debug("parameters: %s" % str(par))
 
     return par
 

@@ -90,7 +90,6 @@ class CIRIEntry(object):
 
 
 def detect(par_dict=None, **kwargs):
-
     opts_of_index_phase_raw = py.body.cli_opts.merge_parameters(kwargs, par_dict, DETECT_SECTION)
 
     opts = copy.copy(opts_of_index_phase_raw)

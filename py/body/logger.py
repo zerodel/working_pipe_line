@@ -29,9 +29,6 @@ def default_logger(logger_name):
 
     return logger
 
-def switch_to_file(path_file, logger_name):
-    pass
-
 
 def log_to_file(logger, log_file_path):
     to_file = logging.FileHandler(log_file_path)

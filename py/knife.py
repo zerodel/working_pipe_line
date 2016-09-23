@@ -301,7 +301,7 @@ def _bsj_junction_to_bed(info_str):
         junction types are reg (linear), rev (circle formed from 2 or more exons), or dup (circle formed from single exon)
     """
 
-    seq_name, gene_splice_1, gene_splice_2, junction_type, strand = info_str.split("|")
+    seq_name, gene_splice_1, gene_splice_2, junction_type, strand = info_str.strip().split("|")
     if junction_type == "reg":
         return None
     else:
@@ -311,12 +311,13 @@ def _bsj_junction_to_bed(info_str):
         start_point = splice_1 if int(splice_1) < int(splice_2) else splice_2
         end_point = splice_2 if int(splice_1) < int(splice_2) else splice_1
 
-        name_bsj = "{chr}_{start}_{end}_{gene_from}_{gene_to}".format(chr=seq_name,
-                                                                      start=start_point,
-                                                                      end=end_point,
-                                                                      gene_from=gene1,
-                                                                      gene_to=gene2)
+        # name_bsj = "{chr}_{start}_{end}_{gene_from}_{gene_to}".format(chr=seq_name,
+        #                                                               start=start_point,
+        #                                                               end=end_point,
+        #                                                               gene_from=gene1,
+        #                                                               gene_to=gene2)
 
+        name_bsj = info_str.strip()
         return "\t".join([seq_name, start_point, end_point, name_bsj, "0", strand])
 
 
