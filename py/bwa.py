@@ -9,9 +9,16 @@ import os
 import os.path
 
 import py.body.cli_opts
+import py.body.option_check
 import py.body.utilities
 import py.body.worker
 from py.body.cli_opts import transform_input_general
+
+__doc__ = ''' this is the wrapper of BWA aligner , it contains two phase: 1. index 2. align
+'''
+__author__ = 'zerodel'
+
+# # begin of helper functions and misc variables and constants
 
 _DESC_READS = "sequence reads files "
 
@@ -21,13 +28,6 @@ _DESC_BWA_IN_FASTA_INDEX = "genomic fasta database file for BWA indexing"
 
 _DESC_BWA_BIN = "BWA binary file path"
 
-__doc__ = '''
-'''
-__author__ = 'zerodel'
-
-INDEX_SECTION = "BWA_INDEX"
-ALIGN_SECTION = "BWA_ALIGN"
-
 _SUFFIX_INDEX = [
     ".bwt",
     ".amb",
@@ -35,66 +35,6 @@ _SUFFIX_INDEX = [
     ".pac",
     ".sa",
 ]
-
-
-def index(para_config=None, **kwargs):
-    opts_of_index_phase_raw = py.body.cli_opts.merge_parameters(kwargs, para_config, INDEX_SECTION)
-
-    opts_of_index_phase = copy.copy(opts_of_index_phase_raw)
-    _option_check_index_phrase(opts_of_index_phase)
-
-    dir_index = get_index_path(opts_of_index_phase)
-
-    if not is_path_contain_index(dir_index):
-        cmd_index = _get_cmd_index(opts_of_index_phase)
-        py.body.worker.run(cmd_index)
-    else:
-        print("Report: already have a BWA index in {}".format(dir_index))
-
-    return opts_of_index_phase_raw
-
-
-def _option_check_index_phrase(opts_index):
-    with py.body.cli_opts.OptionChecker(opts_index) as opt_check:
-        opt_check.must_have("bwa_bin", py.body.utilities.which,
-                            FileNotFoundError("Error: bwa binary not found"), _DESC_BWA_BIN)
-        opt_check.must_have("in_fasta", os.path.exists,
-                            FileNotFoundError("Error: no reference fasta file in {}".format(opts_index["in_fasta"])),
-                            _DESC_BWA_IN_FASTA_INDEX)
-
-
-def align(para_config=None, **kwargs):
-    align_phrase_options_raw = py.body.cli_opts.merge_parameters(kwargs, para_config, ALIGN_SECTION)
-
-    align_phrase_options = copy.copy(align_phrase_options_raw)
-    _option_check_align_phrase(align_phrase_options)
-
-    cmd, output = _get_cmd_align_with_target_file(align_phrase_options)
-
-    if output:
-        with open(output, "w") as alignment_file:
-            bwa_cmd = py.body.worker.Cmd(cmd, target_file=alignment_file)
-            bwa_cmd.run()
-    else:
-        bwa_cmd = py.body.worker.Cmd(cmd)
-        bwa_cmd.run()
-
-    return align_phrase_options_raw
-
-
-def _option_check_align_phrase(opt_align):
-    with py.body.cli_opts.OptionChecker(opt_align) as check_align_opts:
-        check_align_opts.must_have("bwa_bin", py.body.utilities.which,
-                                   FileNotFoundError("Error: bwa binary not found"), _DESC_BWA_BIN)
-
-        check_align_opts.must_have("bwa_index", is_path_contain_index,
-                                   FileNotFoundError("Error: no bwa index in {}".format(opt_align["bwa_index"])),
-                                   _DESC_BWA_INDEX)
-
-        check_align_opts.must_have("read_file", py.body.cli_opts.check_if_these_files_exist,
-                                   FileNotFoundError(
-                                       "Error: incorrect reads file provided for bwa : {}".format(opt_align["read_file"])),
-                                   _DESC_READS)
 
 
 def _get_cmd_align_with_target_file(opt_align):
@@ -162,15 +102,90 @@ def is_map_result_already_exists(align_file_path):
 
 
 def get_align_result_path(para_config=None, **kwargs):
-    align_phrase_options_raw = py.body.cli_opts.merge_parameters(kwargs, para_config, ALIGN_SECTION)
+    align_phrase_options_raw = py.body.cli_opts.merge_parameters(kwargs, para_config, SECTION_ALIGN)
     cmd, output = _get_cmd_align_with_target_file(align_phrase_options_raw)
 
     return output
 
-if __name__ == "__main__":
-    import sys
 
-    if len(sys.argv) < 2:
-        print(__doc__)
+# # end of helper functions  #########
+
+
+SECTION_INDEX = "BWA_INDEX"
+SECTION_ALIGN = "BWA_ALIGN"
+
+
+def _option_check_align_phrase(opt_align=None):
+    check_align_opts = py.body.option_check.OptionChecker(opt_align, name=SECTION_ALIGN)
+    check_align_opts.must_have("bwa_bin", py.body.utilities.which,
+                               FileNotFoundError("Error: bwa binary not found"), _DESC_BWA_BIN)
+
+    check_align_opts.must_have("bwa_index", is_path_contain_index,
+                               FileNotFoundError("Error: incorrect bwa index "),
+                               _DESC_BWA_INDEX)
+
+    check_align_opts.must_have("read_file", py.body.cli_opts.check_if_these_files_exist,
+                               FileNotFoundError(
+                                   "Error: incorrect reads file provided for bwa"),
+                               _DESC_READS)
+    return check_align_opts
+
+
+def _option_check_index_phrase(opts_index=None):
+    opt_check = py.body.option_check.OptionChecker(opts_index, name=SECTION_INDEX)
+    opt_check.must_have("bwa_bin", py.body.utilities.which,
+                        FileNotFoundError("Error: bwa binary not found"), _DESC_BWA_BIN)
+    opt_check.must_have("in_fasta", os.path.exists,
+                        FileNotFoundError("Error: no reference fasta files"),
+                        _DESC_BWA_IN_FASTA_INDEX)
+    return opt_check
+
+
+opt_checker_index = _option_check_index_phrase()
+opt_checker_align = _option_check_align_phrase()
+
+
+def index(para_config=None, **kwargs):
+    opts_of_index_phase_raw = py.body.cli_opts.merge_parameters(kwargs, para_config, SECTION_INDEX)
+
+    opts_of_index_phase = copy.copy(opts_of_index_phase_raw)
+    # _option_check_index_phrase(opts_of_index_phase).check()
+
+    opt_checker_index.check(opts_of_index_phase)
+
+    dir_index = get_index_path(opts_of_index_phase)
+
+    if not is_path_contain_index(dir_index):
+        cmd_index = _get_cmd_index(opts_of_index_phase)
+        py.body.worker.run(cmd_index)
     else:
-        pass
+        print("Report: already have a BWA index in {}".format(dir_index))
+
+    return opts_of_index_phase_raw
+
+
+def align(para_config=None, **kwargs):
+    align_phrase_options_raw = py.body.cli_opts.merge_parameters(kwargs, para_config, SECTION_ALIGN)
+
+    align_phrase_options = copy.copy(align_phrase_options_raw)
+    # _option_check_align_phrase(align_phrase_options)
+    opt_checker_align.check(align_phrase_options)
+
+    cmd, output = _get_cmd_align_with_target_file(align_phrase_options)
+
+    if output:
+        with open(output, "w") as alignment_file:
+            bwa_cmd = py.body.worker.Cmd(cmd, target_file=alignment_file)
+            bwa_cmd.run()
+    else:
+        bwa_cmd = py.body.worker.Cmd(cmd)
+        bwa_cmd.run()
+
+    return align_phrase_options_raw
+
+
+
+if __name__ == "__main__":
+    print(__doc__)
+    print(opt_checker_index)
+    print(opt_checker_align)

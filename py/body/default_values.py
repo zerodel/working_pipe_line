@@ -27,7 +27,7 @@ def load_default_value(path_config_file=""):
     if not path_config_file:
         path_config_file = _get_default_config_file_path(__PATH_DEFAULT_CONFIG)
 
-    config_loaded = py.body.config.single_ini(path_config_file)
+    config_loaded = py.body.config.single_config(path_config_file)
 
     if py.body.config.GLOBAL_SECTION in config_loaded and py.body.config.META_SECTION in config_loaded:
         pass

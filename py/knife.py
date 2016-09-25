@@ -9,7 +9,7 @@ import copy
 import re
 import logging
 
-
+import py.body.option_check
 import py.body.worker
 import py.body.cli_opts
 import py.file_format.fq
@@ -40,61 +40,9 @@ __doc__ = ''' this is a wrapper for KNIFE(Known and Novel IsoForm Explorer)
 '''
 __author__ = 'zerodel'
 
-DETECT_SECTION = "KNIFE"
+SECTION_DETECT = "KNIFE"
 
-
-_logger = py.body.logger.default_logger(DETECT_SECTION)
-
-
-
-def detect(par_dict=None, **kwargs):
-    opts_of_index_phase_raw = py.body.cli_opts.merge_parameters(kwargs, par_dict, DETECT_SECTION)
-    opts = copy.copy(opts_of_index_phase_raw)
-
-    opts = _predict_id_style_and_overlap_length(opts)
-
-    _check_opts(opts)
-
-    cmd_detect = _get_detect_cmd(opts)
-
-    py.body.worker.run(cmd_detect)
-    return opts_of_index_phase_raw
-
-
-def _check_opts(opts):
-    temp_error = "Error@KNIFE: %s"
-    with py.body.cli_opts.OptionChecker(opts) as opt_check:
-        opt_check.must_have(_OPT_BASH_BIN, py.body.utilities.which,
-                            FileNotFoundError(temp_error % "bash binary not found"),
-                            "abs path to bash binary")
-
-        opt_check.must_have(_OPT_KNIFE_SCRIPT, os.path.exists,
-                            FileNotFoundError(temp_error % "incorrect KNIFE script path given "),
-                            "knife_script: absolute path to KNIFE executive script")
-
-        opt_check.must_have(_OPT_READ_DIRECTORY, _check_valid_read_directory,
-                            FileNotFoundError(temp_error % "incorrect read_directory"),
-                            """absolute path to directory containing fastq files for alignment. Paired-end reads (PE) must have read1 and read2 in separate files.""")
-
-        opt_check.may_need(_OPT_READ_ID_STYLE, lambda x: x.strip() in ["appended", "complete"],
-                           KeyError(temp_error % "incorrect read_id_type given"),
-                           """read_id_style, complete|appended (use complete for single end).""")
-
-        opt_check.must_have(_OPT_ALIGNMENT_PARENT_DIRECTORY, _is_this_folder_existing,
-                            NotADirectoryError(temp_error % "must have a directory for all result "),
-                            """alignment_parent_directory: absolute path to directory where the dataset analysis output and log files will be stored. This directory must already exist, and a directory named dataset_name (see below) will be created under this directory for all output files.""")
-
-        opt_check.must_have(_OPT_DATA_SET_NAME, lambda x: True,
-                            NotADirectoryError(temp_error % "incorrect dataset_name given"),
-                            """string identifier for this dataset. A folder of this name will be created under alignment_parent_directory (see above) and all output for this run will be stored in this directory.""")
-
-        opt_check.must_have(_OPT_JUNCTION_OVERLAP, lambda x: x.isdecimal(),
-                            KeyError(temp_error % "junction_overlap should be a integer"),
-                            """minimum number of bases in the read which must be on each side of the junction to consider that the read is overlapping the junction. Values that have empirically worked well are 8 for paired-end (PE) reads of length < 70, 13 for longer PE, and 10 for single-end (SE) reads of length < 70, 15 for longer SE reads.""")
-
-        opt_check.may_need(_OPT_INDEX_PATH, _is_this_folder_existing,
-                           NotADirectoryError(temp_error % "incorrect KNIFE pre-fabricated index path"),
-                           """index_path: a path to KNIFE index directory. """)
+_logger = py.body.logger.default_logger(SECTION_DETECT)
 
 
 def _is_this_folder_existing(x):
@@ -206,36 +154,7 @@ def _get_mate_files(files_in_reads_folder):
     return mate1_f, mate2_f
 
 
-def to_bed(knife_opts_dict, output_bed_file_path, gene_mapping_file=""):
-    # use combined-report as primary source
-    path_of_knife_result = os.path.join(knife_opts_dict[_OPT_ALIGNMENT_PARENT_DIRECTORY],
-                                        knife_opts_dict[_OPT_DATA_SET_NAME])
-
-    extract_bed_from_knife_report_path(output_bed_file_path, path_of_knife_result)
-
-
-def extract_bed_from_knife_report_path(output_bed_file_path, path_of_knife_result):
-    report_path = os.path.join(path_of_knife_result, "circReads")
-    naive_report_folder = os.path.join(report_path, "reports")
-    annotated_junction_report_folder = os.path.join(report_path, "glmReports")
-
-    _logger.debug("naive report path: %s" % naive_report_folder)
-    _logger.debug("glm report path : %s" % annotated_junction_report_folder)
-
-    all_bed_lines = []
-    for report in os.listdir(naive_report_folder):
-        all_bed_lines.extend(_convert_naive_report(os.path.join(naive_report_folder, report)))
-
-    for report in os.listdir(annotated_junction_report_folder):
-        all_bed_lines.extend(_convert_glm_report(os.path.join(annotated_junction_report_folder, report)))
-
-    with open(output_bed_file_path, "w") as op:
-        for line in all_bed_lines:
-            op.write("{}\n".format(line.strip()))
-
-
 def _convert_naive_report(naive_report):
-
     _logger.debug("converting naive report : %s" % naive_report)
 
     res = []
@@ -252,7 +171,6 @@ def _safe_split_knife_report_file_line(line):
 
 
 def _convert_glm_report(glm_report):
-
     _logger.debug("converting glm report : %s" % glm_report)
     res = []
     with open(glm_report) as nr:
@@ -293,12 +211,14 @@ def _is_this_naive_bsj_positive(parts):
 
 def _is_this_glm_bsj_positive(parts):
     pv = float(parts[2])
-    return pv >= 0.9    # this is also from KNIFE github page
+    return pv >= 0.9  # this is also from KNIFE github page
 
 
 def _bsj_junction_to_bed(info_str):
     """junction: chr|gene1_symbol:splice_position|gene2_symbol:splice_position|junction_type|strand
-        junction types are reg (linear), rev (circle formed from 2 or more exons), or dup (circle formed from single exon)
+        junction types are reg (linear),
+        rev (circle formed from 2 or more exons),
+        or dup (circle formed from single exon)
     """
 
     seq_name, gene_splice_1, gene_splice_2, junction_type, strand = info_str.strip().split("|")
@@ -321,10 +241,97 @@ def _bsj_junction_to_bed(info_str):
         return "\t".join([seq_name, start_point, end_point, name_bsj, "0", strand])
 
 
-if __name__ == "__main__":
-    import sys
+def to_bed(knife_opts_dict, output_bed_file_path, gene_mapping_file=""):
+    # use combined-report as primary source
+    path_of_knife_result = os.path.join(knife_opts_dict[_OPT_ALIGNMENT_PARENT_DIRECTORY],
+                                        knife_opts_dict[_OPT_DATA_SET_NAME])
 
-    if len(sys.argv) < 2:
-        print(__doc__)
-    else:
-        pass
+    extract_bed_from_knife_report_path(output_bed_file_path, path_of_knife_result)
+
+
+def extract_bed_from_knife_report_path(output_bed_file_path, path_of_knife_result):
+    report_path = os.path.join(path_of_knife_result, "circReads")
+    naive_report_folder = os.path.join(report_path, "reports")
+    annotated_junction_report_folder = os.path.join(report_path, "glmReports")
+
+    _logger.debug("naive report path: %s" % naive_report_folder)
+    _logger.debug("glm report path : %s" % annotated_junction_report_folder)
+
+    all_bed_lines = []
+    for report in os.listdir(naive_report_folder):
+        all_bed_lines.extend(_convert_naive_report(os.path.join(naive_report_folder, report)))
+
+    for report in os.listdir(annotated_junction_report_folder):
+        all_bed_lines.extend(_convert_glm_report(os.path.join(annotated_junction_report_folder, report)))
+
+    with open(output_bed_file_path, "w") as op:
+        for line in all_bed_lines:
+            op.write("{}\n".format(line.strip()))
+
+
+def _check_opts(opts=None):
+    temp_error = "Error@KNIFE: %s"
+    opt_check = py.body.option_check.OptionChecker(opts, name=SECTION_DETECT)
+    opt_check.must_have(_OPT_BASH_BIN, py.body.utilities.which,
+                        FileNotFoundError(temp_error % "bash binary not found"),
+                        "abs path to bash binary")
+
+    opt_check.must_have(_OPT_KNIFE_SCRIPT, os.path.exists,
+                        FileNotFoundError(temp_error % "incorrect KNIFE script path given "),
+                        "knife_script: absolute path to KNIFE executive script")
+
+    opt_check.must_have(_OPT_READ_DIRECTORY, _check_valid_read_directory,
+                        FileNotFoundError(temp_error % "incorrect read_directory"),
+                        """absolute path to directory containing fastq files for alignment.
+                        Paired-end reads (PE) must have read1 and read2 in separate files.""")
+
+    opt_check.may_need(_OPT_READ_ID_STYLE, lambda x: x.strip() in ["appended", "complete"],
+                       KeyError(temp_error % "incorrect read_id_type given"),
+                       """read_id_style, complete|appended (use complete for single end).""")
+
+    opt_check.must_have(_OPT_ALIGNMENT_PARENT_DIRECTORY, _is_this_folder_existing,
+                        NotADirectoryError(temp_error % "must have a directory for all result "),
+                        """alignment_parent_directory:
+                        absolute path to directory where the dataset analysis output and log files will be stored.
+                        This directory must already exist,
+                        and a directory named dataset_name (see below) will be created under this directory for all output files.""")
+
+    opt_check.must_have(_OPT_DATA_SET_NAME, lambda x: True,
+                        NotADirectoryError(temp_error % "incorrect dataset_name given"),
+                        """string identifier for this dataset.
+                        A folder of this name will be created under alignment_parent_directory (see above)
+                        and all output for this run will be stored in this directory.""")
+
+    opt_check.must_have(_OPT_JUNCTION_OVERLAP, lambda x: x.isdecimal(),
+                        KeyError(temp_error % "junction_overlap should be a integer"),
+                        """minimum number of bases in the read which must be on each side of the junction to consider that the read is overlapping the junction.
+                         Values that have empirically worked well are 8 for paired-end (PE) reads of length < 70,
+                         13 for longer PE,
+                         and 10 for single-end (SE) reads of length < 70,
+                         15 for longer SE reads.""")
+
+    opt_check.may_need(_OPT_INDEX_PATH, _is_this_folder_existing,
+                       NotADirectoryError(temp_error % "incorrect KNIFE pre-fabricated index path"),
+                       """index_path: a path to KNIFE index directory. """)
+    return opt_check
+
+
+opt_checker = _check_opts()
+
+def detect(par_dict=None, **kwargs):
+    opts_of_index_phase_raw = py.body.cli_opts.merge_parameters(kwargs, par_dict, SECTION_DETECT)
+    opts = copy.copy(opts_of_index_phase_raw)
+
+    opts = _predict_id_style_and_overlap_length(opts)
+
+    opt_checker.check(copy.copy(opts_of_index_phase_raw))
+
+    cmd_detect = _get_detect_cmd(opts)
+
+    py.body.worker.run(cmd_detect)
+    return opts_of_index_phase_raw
+
+
+if __name__ == "__main__":
+    print(__doc__)
+    print(opt_checker)

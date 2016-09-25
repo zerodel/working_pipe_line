@@ -4,9 +4,11 @@
 # Readme:
 #
 
-import py.bwa
 import py.body.cli_opts
+import py.body.config
+import py.bwa
 import py.star
+
 
 __doc__ = '''
 '''
@@ -16,6 +18,8 @@ available_tools = {
     "star": py.star,
     "bwa": py.bwa
 }
+
+ALIGNER_SECTION = "mapper"
 
 
 def work(whole_config_content=None, aligner_name=None, ref_path=None, input_files=None):
@@ -46,9 +50,13 @@ def _do_align(align_config, aligner, aligner_ref, input_files):
     return aligner.align(align_config)
 
 
+def main(config_file):
+    config_latter = py.body.config.config(config_file)
+    align_name = config_latter[py.body.config.GLOBAL_SECTION][ALIGNER_SECTION]
+    work(config_latter, align_name)
+
+
 if __name__ == "__main__":
-    import sys
-    if len(sys.argv) < 2:
-        print(__doc__)
-    else:
-        pass
+    par_parser = py.body.cli_opts.simple_arg_parser_only_config_option()
+    par = par_parser.parse_args()
+    main(par.config)

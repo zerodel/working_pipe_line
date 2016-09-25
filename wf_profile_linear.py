@@ -22,7 +22,7 @@ _KEY_MAPPER = "mapper"
 
 
 def main(path_config=""):
-    user_config_whole = py.body.config.ini(path_config) if path_config else py.body.default_values.load_default_value()
+    user_config_whole = py.body.config.config(path_config) if path_config else py.body.default_values.load_default_value()
 
     aligner_name = get_value_from_GLOBAL_section(user_config_whole, _KEY_MAPPER)
     quantifier = get_value_from_GLOBAL_section(user_config_whole, _KEY_QUANTIFIER)

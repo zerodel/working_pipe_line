@@ -8,11 +8,17 @@ import os
 import os.path
 
 import py.body.cli_opts
+import py.body.option_check
 import py.body.worker
 import py.bwa
 import py.body.utilities
 import py.file_format.fa
 import py.body.logger
+
+__doc__ = ''' this is the wrapper of CIRI version 1, it contains one phase: detection
+'''
+
+__author__ = 'zerodel'
 
 _OPT_ANNOTATION = "--anno"
 
@@ -22,28 +28,10 @@ _OPT_OUTPUT = "--out"
 
 _OPT_REF_FILE = "--ref-file"
 
-__doc__ = '''
-'''
-
-__author__ = 'zerodel'
-
-DETECT_SECTION = "CIRI"
-
-
-
 _ESSENTIAL_ARGUMENTS = [_OPT_INPUT, _OPT_OUTPUT, _OPT_REF_FILE, _OPT_ANNOTATION]
 
-is_general_aligner_needed = False
-
-
-"""ciri heavily depends on BWA aligner....but RSEM prefers bowtie/STAR,
-and here we adopt the long-format arguments
-"""
-
-_logger = py.body.logger.default_logger(DETECT_SECTION)
 
 class CIRIEntry(object):
-
     def __init__(self, string_line_in_ciri_output_format=""):
         """ construct an empty ciri entry or from a string.
         :param string_line_in_ciri_output_format: optional, a single string line in CIRI output file, except file header
@@ -87,113 +75,6 @@ class CIRIEntry(object):
             chromosome_id = self.chr
 
         return "\t".join([chromosome_id, self.start, self.end, self.id]).strip()
-
-
-def detect(par_dict=None, **kwargs):
-    opts_of_index_phase_raw = py.body.cli_opts.merge_parameters(kwargs, par_dict, DETECT_SECTION)
-
-    opts = copy.copy(opts_of_index_phase_raw)
-
-    reads = opts.pop("--seqs", "")
-    bwa_bin_path = opts.pop("bwa_bin", "")
-
-    if "bwa_bin" in opts:
-        raise KeyError("ERROR@PYTHON: unable to remove bwa_bin in a dict using dict.pop")
-    bwa_index_path = opts.pop("bwa_index", "")
-    if "bwa_index" in opts:
-        raise KeyError("ERROR@PYTHON: unable to remove bwa_index in a dict using dict.pop")
-
-    if not _is_there_alignment_already(opts):
-        if reads:
-            try:
-                map_job_setting = {
-                    "bwa_bin": bwa_bin_path,
-                    "bwa_index": bwa_index_path,
-                    "read_file": reads,
-                    "sam": opts[_OPT_INPUT],
-                }
-                _logger.debug("need bwa mapping with parameter: %s" % str(map_job_setting))
-                optional_mapping_using_bwa(map_job_setting)
-            except Exception as e:
-                raise e  # no idea how to handle it
-
-        else:
-            raise FileNotFoundError("Error@CIRI: no reads for BWA mapping")
-
-    _check_opts(copy.copy(opts_of_index_phase_raw))
-
-    cmd_detect = _get_detect_cmd(opts)
-
-    _logger.debug("raw command for CIRI is : %s" % cmd_detect)
-    py.body.worker.run(cmd_detect)
-
-    return opts_of_index_phase_raw
-
-
-def _get_detect_cmd(opts_raw):
-    opts = copy.copy(opts_raw)
-
-    cmd_corp = "perl {ciri_path}".format(ciri_path=opts.pop("ciri_path"))
-
-    cmd_main = " ".join([py.body.cli_opts.drop_key(key, opts) for key in _ESSENTIAL_ARGUMENTS])
-
-    cmd_latter = py.body.cli_opts.enum_all_opts(opts)
-    return " ".join([cmd_corp, cmd_main, cmd_latter])
-
-
-def _check_opts(args_dict):
-    with py.body.cli_opts.OptionChecker(args_dict) as opt_checker:
-        opt_checker.may_need("bwa_bin", py.body.utilities.which,
-                             FileNotFoundError("ERROR@CIRI: incorrect bwa binary path for bwa"),
-                             "binary file path of BWA aligner")
-
-        opt_checker.may_need("bwa_index", os.path.exists,
-                             FileNotFoundError("ERROR@CIRI: incorrect bwa index path"),
-                             "index path for BWA aligner")
-
-        opt_checker.must_have("ciri_path", os.path.exists,
-                              FileNotFoundError("Error@CIRI: no ciri script "),
-                              "file path to ciri script")
-
-        opt_checker.may_need("--seqs", py.body.cli_opts.check_if_these_files_exist,
-                             FileNotFoundError("ERROR@CIRI: incorrect reads files provided "),
-                             "sequence reads files need analysis")
-
-        opt_checker.may_need(_OPT_ANNOTATION, os.path.exists,
-                             FileNotFoundError("ERROR@CIRI: incorrect annotation file "),
-                             "genomic annotation file")
-
-        opt_checker.at_most_one(["--thread_num", "-T"], lambda x: x.isdecimal(),
-                                ValueError("Error@CIRI: thread num should be a number"),
-                                "thread number.")
-
-        opt_checker.must_have(_OPT_INPUT, _is_sam_file_path_valid,
-                              FileNotFoundError("Error : unable to find CIRI input file"),
-                              "path to alignments in SAM file type")
-
-        opt_checker.must_have(_OPT_OUTPUT, _is_this_path_contains_valid_folder,
-                              FileNotFoundError("Error : incorrect CIRI output file"),
-                              "CIRI detection report file")
-
-        opt_checker.one_and_only_one(["--ref_dir", _OPT_REF_FILE], check_ref,
-                                     FileNotFoundError("Error: incorrect CIRI ref file"),
-                                     "reference file for CIRI")
-
-        opt_checker.forbid_these_args("--help", "-H")
-
-        def _ciri_input_check(opts):
-            no_sam_for_ciri = not _is_a_bwa_sam_file(opts[_OPT_INPUT])
-            if no_sam_for_ciri:
-                if "bwa_bin" not in opts or not py.body.utilities.which(opts["bwa_bin"]):
-                    raise KeyError("ERROR@CIRI@NO_SAM: incorrect BWA binary file provided")
-
-                if "bwa_index" not in opts or not os.path.exists(opts["bwa_index"]):
-                    raise KeyError("ERROR@CIRI@NO_SAM: incorrect BWA index file provided")
-
-                if "--seqs" not in opts or not py.body.cli_opts.check_if_these_files_exist(opts["--seqs"]):
-                    raise KeyError("ERROR@CIRI@NO_SAM: incorrect sequence reads for BWA alignment ")
-
-        opt_checker.custom_condition(_ciri_input_check, "check the options when no sam file for CIRI")
 
 
 def _is_sam_file_path_valid(sam_file):
@@ -252,21 +133,21 @@ def to_bed(ciri_opts, output_bed_file="", path_transcript_gene_mapping=""):
         path_transcript_gene_mapping = ".".join([main_part_ciri_path, "mapping"])
 
     with open(ciri_output_file) as ciri_file:
-            ciri_file.readline()  # file head should be skipped
+        ciri_file.readline()  # file head should be skipped
 
-            with open(output_bed_file, "w") as exporter:
-                with open(path_transcript_gene_mapping, "w") as mapping_file:
-                    for line in ciri_file:
-                        ciri_line_entry = CIRIEntry(line.strip())
+        with open(output_bed_file, "w") as exporter:
+            with open(path_transcript_gene_mapping, "w") as mapping_file:
+                for line in ciri_file:
+                    ciri_line_entry = CIRIEntry(line.strip())
 
-                        new_bed_line = ciri_line_entry.to_dot_bed_string()
-                        mapping_string = _export_mapping_of_circular_isoform(ciri_line_entry)
+                    new_bed_line = ciri_line_entry.to_dot_bed_string()
+                    mapping_string = _export_mapping_of_circular_isoform(ciri_line_entry)
 
-                        if new_bed_line and mapping_string:
-                            exporter.write(new_bed_line + "\n")
-                            mapping_file.write(mapping_string + "\n")
-                        else:
-                            pass
+                    if new_bed_line and mapping_string:
+                        exporter.write(new_bed_line + "\n")
+                        mapping_file.write(mapping_string + "\n")
+                    else:
+                        pass
 
 
 def _export_mapping_of_circular_isoform(some_ciri_entry):
@@ -281,6 +162,151 @@ def get_alignment(opts):
         return opts[_OPT_INPUT]
     else:
         raise KeyError("Error: no input file specified for CIRI")
+
+
+def check_ref(ref_path):
+    if os.path.isdir(ref_path) and os.path.exists(ref_path):
+        return any([is_fasta(part) for part in os.listdir(ref_path)])
+
+    elif os.path.isfile(ref_path) and os.path.exists(ref_path):
+        return is_fasta(ref_path)
+
+    else:
+        raise FileNotFoundError("Error: not a valid fasta file  :{}".format(ref_path))
+
+
+def which_external_aligner(para_config=None, **kwargs):
+    # ciri is bound to bwa aligner, so no need for external aligner
+    return ""
+
+
+def _is_there_alignment_already(opts):
+    is_there_alignments = _OPT_INPUT in opts and os.path.exists(opts[_OPT_INPUT])
+    return is_there_alignments
+
+
+# # end of helper functions . ###################################
+
+
+
+is_general_aligner_needed = False
+
+SECTION_DETECT = "CIRI"
+
+"""ciri heavily depends on BWA aligner....but RSEM prefers bowtie/STAR,
+and here we adopt the long-format arguments
+"""
+
+_logger = py.body.logger.default_logger(SECTION_DETECT)
+
+
+def _check_opts(args_dict=None):
+    opt_checker = py.body.option_check.OptionChecker(args_dict, name=SECTION_DETECT)
+    opt_checker.may_need("bwa_bin", py.body.utilities.which,
+                         FileNotFoundError("ERROR@CIRI: incorrect bwa binary path for bwa"),
+                         "binary file path of BWA aligner")
+
+    opt_checker.may_need("bwa_index", os.path.exists,
+                         FileNotFoundError("ERROR@CIRI: incorrect bwa index path"),
+                         "index path for BWA aligner")
+
+    opt_checker.must_have("ciri_path", os.path.exists,
+                          FileNotFoundError("Error@CIRI: no ciri script "),
+                          "file path to ciri script")
+
+    opt_checker.may_need("--seqs", py.body.cli_opts.check_if_these_files_exist,
+                         FileNotFoundError("ERROR@CIRI: incorrect reads files provided "),
+                         "sequence reads files need analysis")
+
+    opt_checker.may_need(_OPT_ANNOTATION, os.path.exists,
+                         FileNotFoundError("ERROR@CIRI: incorrect annotation file "),
+                         "genomic annotation file")
+
+    opt_checker.at_most_one(["--thread_num", "-T"], lambda x: x.isdecimal(),
+                            ValueError("Error@CIRI: thread num should be a number"),
+                            "thread number.")
+
+    opt_checker.must_have(_OPT_INPUT, _is_sam_file_path_valid,
+                          FileNotFoundError("Error : unable to find CIRI input file"),
+                          "path to alignments in SAM file type")
+
+    opt_checker.must_have(_OPT_OUTPUT, _is_this_path_contains_valid_folder,
+                          FileNotFoundError("Error : incorrect CIRI output file"),
+                          "CIRI detection report file")
+
+    opt_checker.one_and_only_one(["--ref_dir", _OPT_REF_FILE], check_ref,
+                                 FileNotFoundError("Error: incorrect CIRI ref file"),
+                                 "reference file for CIRI")
+
+    opt_checker.forbid_these_args("--help", "-H")
+
+    def _ciri_input_check(opts):
+        no_sam_for_ciri = not _is_a_bwa_sam_file(opts[_OPT_INPUT])
+        if no_sam_for_ciri:
+            if "bwa_bin" not in opts or not py.body.utilities.which(opts["bwa_bin"]):
+                raise KeyError("ERROR@CIRI@NO_SAM: incorrect BWA binary file provided")
+
+            if "bwa_index" not in opts or not os.path.exists(opts["bwa_index"]):
+                raise KeyError("ERROR@CIRI@NO_SAM: incorrect BWA index file provided")
+
+            if "--seqs" not in opts or not py.body.cli_opts.check_if_these_files_exist(opts["--seqs"]):
+                raise KeyError("ERROR@CIRI@NO_SAM: incorrect sequence reads for BWA alignment ")
+
+    opt_checker.custom_condition(_ciri_input_check, "check the options when no sam file for CIRI")
+
+    return opt_checker
+
+
+opt_checker = _check_opts()
+
+def _get_detect_cmd(opts_raw):
+    opts = copy.copy(opts_raw)
+    cmd_corp = "perl {ciri_path}".format(ciri_path=opts.pop("ciri_path"))
+    cmd_main = " ".join([py.body.cli_opts.drop_key(key, opts) for key in _ESSENTIAL_ARGUMENTS])
+    cmd_latter = py.body.cli_opts.enum_all_opts(opts)
+    return " ".join([cmd_corp, cmd_main, cmd_latter])
+
+
+def detect(par_dict=None, **kwargs):
+    opts_of_index_phase_raw = py.body.cli_opts.merge_parameters(kwargs, par_dict, SECTION_DETECT)
+
+    opts = copy.copy(opts_of_index_phase_raw)
+
+    reads = opts.pop("--seqs", "")
+    bwa_bin_path = opts.pop("bwa_bin", "")
+
+    if "bwa_bin" in opts:
+        raise KeyError("ERROR@PYTHON: unable to remove bwa_bin in a dict using dict.pop")
+    bwa_index_path = opts.pop("bwa_index", "")
+    if "bwa_index" in opts:
+        raise KeyError("ERROR@PYTHON: unable to remove bwa_index in a dict using dict.pop")
+
+    if not _is_there_alignment_already(opts):
+        if reads:
+            try:
+                map_job_setting = {
+                    "bwa_bin": bwa_bin_path,
+                    "bwa_index": bwa_index_path,
+                    "read_file": reads,
+                    "sam": opts[_OPT_INPUT],
+                }
+                _logger.debug("need bwa mapping with parameter: %s" % str(map_job_setting))
+                optional_mapping_using_bwa(map_job_setting)
+            except Exception as e:
+                raise e  # no idea how to handle it
+
+        else:
+            raise FileNotFoundError("Error@CIRI: no reads for BWA mapping")
+
+    opt_checker.check(copy.copy(opts_of_index_phase_raw))
+
+    cmd_detect = _get_detect_cmd(opts)
+
+    _logger.debug("raw command for CIRI is : %s" % cmd_detect)
+    py.body.worker.run(cmd_detect)
+
+    return opts_of_index_phase_raw
+
 
 
 def optional_mapping_using_bwa(meta_setting, **kwargs):
@@ -316,31 +342,6 @@ def optional_mapping_using_bwa(meta_setting, **kwargs):
     }, output=sam)
 
 
-def check_ref(ref_path):
-
-    if os.path.isdir(ref_path) and os.path.exists(ref_path):
-        return any([is_fasta(part) for part in os.listdir(ref_path)])
-
-    elif os.path.isfile(ref_path) and os.path.exists(ref_path):
-        return is_fasta(ref_path)
-
-    else:
-        raise FileNotFoundError("Error: not a valid fasta file  :{}".format(ref_path))
-
-
-def which_external_aligner(para_config=None, **kwargs):
-    # ciri is bound to bwa aligner, so no need for external aligner
-    return ""
-
-
-def _is_there_alignment_already(opts):
-    is_there_alignments = _OPT_INPUT in opts and os.path.exists(opts[_OPT_INPUT])
-    return is_there_alignments
-
-
 if __name__ == "__main__":
-    import sys
-    if len(sys.argv) < 2:
-        print(__doc__)
-    else:
-        pass
+    print(__doc__)
+    print(opt_checker)

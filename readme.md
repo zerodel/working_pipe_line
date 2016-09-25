@@ -31,6 +31,10 @@ a controller/checker should be established, and should provide following feature
 yes , the output file is the logging file, and should use the standard logging module. ... but still undone yet . 
 it is mostly the python logging manual's fault .....
 
+### option checker and helper ###
+
+a mechanism for checking opts and print help is needed . 
+
 
 ## aligner ##
 
@@ -63,13 +67,13 @@ those related files should be provide by aligner module itself.
 	output : bool value indiacting whether there is a index .
 
 
-4. INDEX_SECTION:
+4. SECTION_INDEX:
 
-> a string shows index parameter is under configure[INDEX_SECTION]
+> a string shows index parameter is under configure[SECTION_INDEX]
 
-5. ALIGN_SECTION:
+5. SECTION_ALIGN:
 
-> a string shows align parameters are under configure[ALIGN_SECTION]
+> a string shows align parameters are under configure[SECTION_ALIGN]
 
 6. interpret_index_path:
 
@@ -134,13 +138,13 @@ similar with aligners, quantification tools also need index . so the main framew
 	output : bool value indiacting whether there is a index .
 
 
-4. INDEX_SECTION:
+4. SECTION_INDEX:
 
-> a string shows index parameter is under configure[INDEX_SECTION]
+> a string shows index parameter is under configure[SECTION_INDEX]
 
-5. QUANTIFY_SECTION:
+5. SECTION_QUANTIFY:
 
-> a string shows align parameters are under configure[QUANTIFY_SECTION]
+> a string shows align parameters are under configure[SECTION_QUSANTIFY]
 
 6. interpret_index_path:
 
@@ -182,7 +186,7 @@ seems this tool do not need a index phrase . or it can be done manually.
     output: 1. a bed file contains the information of circRNA detection.
             2. optional gene-mapping file  
 
-3. DETECT_SECTION:
+3. SECTION_DETECT:
 
 > a string shows where is the setting of this detection tool in config file.
 

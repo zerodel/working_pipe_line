@@ -43,7 +43,7 @@ def main(cfg):
 
     _logger.debug("configure is a {} , and content is {}".format(type(cfg), str(cfg)))
 
-    user_config = py.body.config.ini(cfg) if cfg else py.body.default_values.load_default_value()
+    user_config = py.body.config.config(cfg) if cfg else py.body.default_values.load_default_value()
 
     detector_name = user_config[py.body.config.GLOBAL_SECTION]["detector"]
 

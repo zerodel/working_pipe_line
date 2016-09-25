@@ -10,6 +10,7 @@ import argparse
 import py.body.default_values
 import py.body.config
 import py.body.cli_opts
+import py.body.option_check
 import py.body.worker
 import py.sailfish
 import py.gffread
@@ -40,7 +41,7 @@ def _cli_arg_parser():
 
 
 def main(path_config):
-    user_config = py.body.config.ini(path_config) if path_config else py.body.default_values.load_default_value()
+    user_config = py.body.config.config(path_config) if path_config else py.body.default_values.load_default_value()
 
     if SEQ_SECTION not in user_config:
         raise KeyError("ERROR@Config_file: should have a section with the name :{}".format(SEQ_SECTION))
@@ -55,7 +56,7 @@ def main(path_config):
 
     _logger.debug("profile config dict is : %s" % str(circ_profile_config))
 
-    _option_check_main_interface(circ_profile_config)
+    _option_check_main_interface(circ_profile_config).check()
 
     str_quantifier = circ_profile_config.pop(
         _CONFIG_KEY_QUANTIFIER) if _CONFIG_KEY_QUANTIFIER in circ_profile_config else (
@@ -162,43 +163,43 @@ def _catch_one(opts_dict, *args):
 
 
 def _option_check_main_interface(opts):
-    with py.body.cli_opts.OptionChecker(opts) as oc:
-        oc.one_and_only_one(["-g", "--genomic_seqs_fasta"], os.path.exists,
-                            FileNotFoundError("Error@circular_RNA_profiling: incorrect genomic reference fa file"),
-                            "path to genomic sequence fasta file")
+    oc = py.body.option_check.OptionChecker(opts)
+    oc.one_and_only_one(["-g", "--genomic_seqs_fasta"], os.path.exists,
+                        FileNotFoundError("Error@circular_RNA_profiling: incorrect genomic reference fa file"),
+                        "path to genomic sequence fasta file")
 
-        oc.one_and_only_one(["-a", "--annotation"], os.path.exists,
-                            FileNotFoundError("Error@circular_RNA_profiling: incorrect genome annotation file"),
-                            "path to gene annotation file, ie, .gtf or .gff files")
+    oc.one_and_only_one(["-a", "--annotation"], os.path.exists,
+                        FileNotFoundError("Error@circular_RNA_profiling: incorrect genome annotation file"),
+                        "path to gene annotation file, ie, .gtf or .gff files")
 
-        oc.one_and_only_one(["-c", "--ciri_bsj", "--bed"], os.path.exists,
-                            FileNotFoundError("Error@circular_RNA_profiling: can not find circular report file "),
-                            "path to  circRNA detection report to specify circular RNA")
+    oc.one_and_only_one(["-c", "--ciri_bsj", "--bed"], os.path.exists,
+                        FileNotFoundError("Error@circular_RNA_profiling: can not find circular report file "),
+                        "path to  circRNA detection report to specify circular RNA")
 
-        oc.must_have("-o", os.path.exists,
-                     FileNotFoundError("Error@circular_RNA_profiling: no place for output"),
-                     "output folder that contains the index built by sailfish and quantification results")
+    oc.must_have("-o", os.path.exists,
+                 FileNotFoundError("Error@circular_RNA_profiling: no place for output"),
+                 "output folder that contains the index built by sailfish and quantification results")
 
-        oc.may_need("--mll", lambda x: x.isdigit(),
-                    TypeError("Error@circular_RNA_profiling: mean library length should be a integer"),
-                    "mean library length, this option is to fix up the effective length.")
+    oc.may_need("--mll", lambda x: x.isdigit(),
+                TypeError("Error@circular_RNA_profiling: mean library length should be a integer"),
+                "mean library length, this option is to fix up the effective length.")
 
-        oc.may_need("-k", lambda x: x.isdigit(),
-                    TypeError("Error@circular_RNA_profiling: k in k mer should be integer"),
-                    "k-mer size used by sailfish to built index. default is 21")
+    oc.may_need("-k", lambda x: x.isdigit(),
+                TypeError("Error@circular_RNA_profiling: k in k mer should be integer"),
+                "k-mer size used by sailfish to built index. default is 21")
 
-        oc.may_need("-1", os.path.exists,
-                    FileNotFoundError("Error@circular_RNA_profiling: no mate1 input seq file"),
-                    "path to raw pair-end reads, mate 1")
-        oc.may_need("-2", os.path.exists,
-                    FileNotFoundError("Error@circular_RNA_profiling: no mate2 input seq file"),
-                    "path to raw pair-end reads, mate 2")
-        oc.may_need("-r", os.path.exists,
-                    FileNotFoundError("Error@circular_RNA_profiling: no single end sequence input file"),
-                    "path to single-end raw sequencing reads file.")
+    oc.may_need("-1", os.path.exists,
+                FileNotFoundError("Error@circular_RNA_profiling: no mate1 input seq file"),
+                "path to raw pair-end reads, mate 1")
+    oc.may_need("-2", os.path.exists,
+                FileNotFoundError("Error@circular_RNA_profiling: no mate2 input seq file"),
+                "path to raw pair-end reads, mate 2")
+    oc.may_need("-r", os.path.exists,
+                FileNotFoundError("Error@circular_RNA_profiling: no single end sequence input file"),
+                "path to single-end raw sequencing reads file.")
 
-        oc.forbid_these_args("-h", "--help")
-
+    oc.forbid_these_args("-h", "--help")
+    return oc
 
 if __name__ == "__main__":
     arg_parser = _cli_arg_parser()

@@ -3,11 +3,13 @@
 # author : zerodel
 # Readme:
 #
+import argparse
 
 import py.body.cli_opts
 import py.rsem
 import py.sailfish
 import py.salmon
+import py.body.config
 
 __doc__ = '''
 '''
@@ -20,6 +22,7 @@ available_tools = {
     "salmon": py.salmon
 }
 
+QUANTIFIER_SECTION = "quantifier"
 
 def work(whole_config_content=None, quantifier_name=None, inputs=None):
     quantifier = available_tools[quantifier_name]
@@ -51,10 +54,13 @@ def _do_quantify(quantify_config, quantifier, quantify_ref, inputs):
     return quantifier.quantify(config_dict_quantify)
 
 
-if __name__ == "__main__":
-    import sys
+def main(config_file):
+    config_latter = py.body.config.config(config_file)
+    quantifier_name = config_latter[py.body.config.GLOBAL_SECTION][QUANTIFIER_SECTION]
+    work(config_latter, quantifier_name)
 
-    if len(sys.argv) < 2:
-        print(__doc__)
-    else:
-        pass
+
+if __name__ == "__main__":
+    arg_parser = py.body.cli_opts.simple_arg_parser_only_config_option()
+    par = arg_parser.parse_args()
+    main(par.config)

@@ -9,9 +9,10 @@ import os.path
 
 import py.body.cli_opts
 import py.body.default_values
+import py.body.option_check
 import py.body.utilities
 import py.body.worker
-from py.body.cli_opts import is_suitable_path_with_prefix
+import py.body.logger
 
 _DESC_SAMPLE_NAME = """The name of the sample analyzed.
 All output files are prefixed by this name (e.g., sample_name.genes.results)"""
@@ -29,12 +30,12 @@ If a directory name is specified, RSEM will read all files with suffix ".fa" or 
 The files should contain either the sequences of transcripts or an entire genome, depending on whether the '--gtf' option is used.
 """
 
-__doc__ = ''' wrapper of RSEM cmd line options
+__doc__ = ''' wrapper of RSEM cmd line options, contains two phase : 1 index,2 quantify
 '''
 __author__ = 'zerodel'
 
-INDEX_SECTION = "RSEM_INDEX"
-QUANTIFY_SECTION = "RSEM_QUANTIFY"
+SECTION_INDEX = "RSEM_INDEX"
+SECTION_QUANTIFY = "RSEM_QUANTIFY"
 
 _ESSENTIAL_ARGS_REFERENCE = "{reference_fasta_files} {reference_name}"
 _ESSENTIAL_ARGS_QUANTIFICATION = "{reference_name} {sample_name}"
@@ -75,25 +76,7 @@ def interpret_seq_files(input_files):
     else:
         return {}
 
-
-def index(para_config=None, *args, **kwargs):
-    opts_index_rsem_raw = py.body.cli_opts.merge_parameters(kwargs, para_config, INDEX_SECTION)
-
-    opts_index_rsem = copy.copy(opts_index_rsem_raw)
-    _option_check_index_rsem(opts_index_rsem)
-
-    cmd = _get_cmd_make_index(opts_index_rsem)
-
-    if not is_path_contain_index(get_index_path(opts_index_rsem)):
-        py.body.worker.run(cmd)
-    else:
-        print("Report: already have a RSEM index in {}".format(get_index_path(opts_index_rsem)))
-
-    return opts_index_rsem_raw
-
-
 def _get_cmd_make_index(updated_para):
-
     cmd_prepare_reference = "{rsem_bin_prepare_reference}".format(**updated_para)
 
     py.body.utilities.check_binary_executable(cmd_prepare_reference)
@@ -103,17 +86,6 @@ def _get_cmd_make_index(updated_para):
 
     return cmd_prepare_reference
 
-
-def _option_check_index_rsem(updated_para):
-    with py.body.cli_opts.OptionChecker(updated_para) as opt_checker:
-
-        opt_checker.must_have("reference_fasta_files", os.path.exists,
-                              FileNotFoundError("Error: fasta reference file not found as rsem reference"),
-                              _DESC_REFERENCE_FASTA_FILES)
-
-        opt_checker.must_have("reference_name", is_suitable_path_with_prefix,
-                              FileNotFoundError("Error: reference_name not specified"),
-                              _DESC_REFERENCE_NAME)
 
 
 def _get_cmd_calculate_expression(options):
@@ -149,32 +121,61 @@ def _get_cmd_calculate_expression(options):
     return cmd_string_quantify
 
 
-def _option_check_quantify_rsem(updated_para):
-    with py.body.cli_opts.OptionChecker(updated_para) as quantify_opt_check:
-        quantify_opt_check.must_have("reference_name", is_path_contain_index,
-                                     FileNotFoundError("ERROR: rsem reference file not specified"),
-                                     _DESC_EXPRESSION_REFERENCE_NAME)
-        quantify_opt_check.must_have("sample_name", is_suitable_path_with_prefix,
-                                     FileNotFoundError("ERROR: rsem sample file not specified"), _DESC_SAMPLE_NAME)
+def _option_check_index_rsem(updated_para=None):
+    opt_checker =  py.body.option_check.OptionChecker(updated_para, name=SECTION_INDEX)
+    opt_checker.must_have("reference_fasta_files", os.path.exists,
+                          FileNotFoundError("Error: fasta reference file not found as rsem reference"),
+                          _DESC_REFERENCE_FASTA_FILES)
+
+    opt_checker.must_have("reference_name", py.body.cli_opts.is_suitable_path_with_prefix,
+                          FileNotFoundError("Error: reference_name not specified"),
+                          _DESC_REFERENCE_NAME)
+    return opt_checker
+
+def _option_check_quantify_rsem(updated_para=None):
+    quantify_opt_check =  py.body.option_check.OptionChecker(updated_para, name=SECTION_QUANTIFY)
+    quantify_opt_check.must_have("reference_name", is_path_contain_index,
+                                 FileNotFoundError("ERROR: rsem reference file not specified"),
+                                 _DESC_EXPRESSION_REFERENCE_NAME)
+    quantify_opt_check.must_have("sample_name", py.body.cli_opts.is_suitable_path_with_prefix,
+                                 FileNotFoundError("ERROR: rsem sample file not specified"), _DESC_SAMPLE_NAME)
+    return quantify_opt_check
+
+_logger = py.body.logger.default_logger("RSEM")
+opt_checker_index = _option_check_index_rsem()
+opt_checker_quantify = _option_check_quantify_rsem()
+
+def index(para_config=None, *args, **kwargs):
+    opts_index_rsem_raw = py.body.cli_opts.merge_parameters(kwargs, para_config, SECTION_INDEX)
+
+    opts_index_rsem = copy.copy(opts_index_rsem_raw)
+
+    opt_checker_index.check(opts_index_rsem)
+
+    cmd = _get_cmd_make_index(opts_index_rsem)
+
+    if not is_path_contain_index(get_index_path(opts_index_rsem)):
+        py.body.worker.run(cmd)
+    else:
+        print("Report: already have a RSEM index in {}".format(get_index_path(opts_index_rsem)))
+
+    return opts_index_rsem_raw
+
 
 
 def quantify(para_config=None, *args, **kwargs):
-    opts_quantify_rsem = py.body.cli_opts.merge_parameters(kwargs, para_config, QUANTIFY_SECTION)
+    opts_quantify_rsem = py.body.cli_opts.merge_parameters(kwargs, para_config, SECTION_QUANTIFY)
 
-    _option_check_quantify_rsem(opts_quantify_rsem)
+    opt_checker_quantify.check(opts_quantify_rsem)
 
     cmd = _get_cmd_calculate_expression(opts_quantify_rsem)
 
-    print(cmd)
     py.body.worker.run(cmd)
 
     return opts_quantify_rsem
 
 
 if __name__ == "__main__":
-    import sys
-
-    if len(sys.argv) < 2:
-        print(__doc__)
-    else:
-        pass
+    print(__doc__)
+    print(opt_checker_index)
+    print(opt_checker_quantify)
