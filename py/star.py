@@ -220,7 +220,7 @@ def _option_check_index_phrase(opt_index_phrase=None):
 
 
 def _option_check_align_phrase(updated_para=None):
-    err_temp = "Error@STAR_ALIGN %s"
+    err_temp = "Error@STAR_ALIGN: %s"
     opt_checker = py.body.option_check.OptionChecker(updated_para, name=SECTION_ALIGN)
     opt_checker.must_have(_OPT_STAR_BIN, py.body.utilities.which,
                           FileNotFoundError(err_temp % "no such STAR binary file"),
@@ -241,6 +241,10 @@ def _option_check_align_phrase(updated_para=None):
     opt_checker.must_have(_OPT_OUT_FILE_NAME_PREFIX, py.body.cli_opts.is_suitable_path_with_prefix,
                           FileNotFoundError(err_temp % "unable to set the alignment output path for STAR "),
                           _DESC_OUT_FILE_NAME_PREFIX)
+
+    opt_checker.may_need(_OPT_QUANT_MODE, lambda x: x in ["-", "TranscriptomeSAM"],
+                         KeyError(err_temp % "incorrect quant mode given "),
+                         "specify how the output sam file should be ")
 
     return opt_checker
 
