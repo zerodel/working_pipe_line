@@ -3,15 +3,14 @@
 # author : zerodel
 # Readme:
 #
+
+import sys
 import shlex
 import subprocess
 import tempfile
-import sys
-import logging
-
-from py.body import utilities
 
 import py.body.logger
+from py.body import utilities
 
 __doc__ = ''' wrapper of subprocess, got a job , and run it
 '''
@@ -221,8 +220,10 @@ def run(cli_str):
                                                                                stderr=p.stderr
                                                                                ))
 
+
 if __name__ == "__main__":
     import sys
+
     if len(sys.argv) < 2:
         print(__doc__)
 

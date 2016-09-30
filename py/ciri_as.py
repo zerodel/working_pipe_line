@@ -9,10 +9,12 @@ import os
 import os.path
 
 import py.body.cli_opts
+import py.body.logger
 import py.body.option_check
 import py.body.worker
 import py.ciri
-import py.body.logger
+
+_OPT_CIRI_AS_PATH = "ciri_as_path"
 
 __doc__ = '''this is the wrapper of CIRI-AS
 '''
@@ -20,39 +22,58 @@ __author__ = 'zerodel'
 
 SECTION_DETECT = "CIRI_AS"
 
-_ESSENTIAL_ARGUMENTS = ["--sam", "--ciri", "--out", ]
+_ESSENTIAL_ARGUMENTS = ["--sam", "--ciri", "--out", "--ref_dir", "--ref_file", "--anno", "--log"]
+
+_ARGUMENT_ORDER = ["--sam", "--ciri", "--out", "--ref_dir", "--ref_file", "--anno", "--log"]
 
 _logger = py.body.logger.default_logger(SECTION_DETECT)
 
 
+def _is_a_suitable_file_path(path_given):
+    p_dir, p_file = os.path.split(path_given)
+    return os.path.exists(p_dir) and os.path.isdir(p_dir)
+
 
 def _check_opts(opts=None):
-    opt_checker = py.body.option_check.OptionChecker(opts, name=SECTION_DETECT)
-    opt_checker.must_have("--sam", os.path.exists,
-                          FileNotFoundError(
-                              "Error : unable to find CIRI-AS input sam file"),
-                          "input sam file , should be the same as the CIRI used")
+    check_your_option = py.body.option_check.OptionChecker(opts, name=SECTION_DETECT)
 
-    opt_checker.must_have("--ciri", os.path.exists,
-                          FileNotFoundError("Error : unable to find CIRI output file"),
-                          "CIRI output file , should be the same version with CIRI AS")
+    check_your_option.must_have(_OPT_CIRI_AS_PATH, os.path.exists,
+                                FileNotFoundError("Error: can not find CIRI-AS script"),
+                                "path to CIRI-AS script file ")
+    check_your_option.must_have("--sam", os.path.exists,
+                                FileNotFoundError(
+                                    "Error: unable to find CIRI-AS input sam file"),
+                                "input sam file , should be the same as the CIRI used")
 
-    opt_checker.must_have("--out", py.body.cli_opts.is_suitable_path_with_prefix,
-                          FileNotFoundError("Error: incorrect output file for CIRI-AS"),
-                          "output file path for CIRI-AS")
+    check_your_option.must_have("--ciri", os.path.exists,
+                                FileNotFoundError("Error@CIRI-AS : unable to find CIRI output file"),
+                                "CIRI output file , should be the same version with CIRI AS")
 
-    opt_checker.one_and_only_one(["--ref_dir", "--ref_file"], py.ciri.check_ref,
-                                 FileNotFoundError("Error: unable to find ref-file for CIRI-AS"),
-                                 "genomic reference file")
+    check_your_option.must_have("--out", py.body.cli_opts.is_suitable_path_with_prefix,
+                                FileNotFoundError("Error@CIRI-AS: incorrect output file for CIRI-AS"),
+                                "output file path for CIRI-AS")
 
-    opt_checker.forbid_these_args("--help", "-H")
-    return opt_checker
+    check_your_option.one_and_only_one(["--ref_dir", "--ref_file"], py.ciri.check_ref,
+                                       FileNotFoundError("Error@CIRI-AS: unable to find ref-file for CIRI-AS"),
+                                       "genomic reference file, should be the same as CIRI")
+
+    check_your_option.may_need("--anno", os.path.exists,
+                               FileNotFoundError("Error@CIRI-AS: incorrect annotation file provide for CIRI-AS"),
+                               "genomic annotation , should be the same as CIRI")
+    check_your_option.may_need("--log", _is_a_suitable_file_path,
+                               FileNotFoundError("Error@CIRI-AS: incorrect path for a log file "),
+                               "output log file name (optional)")
+
+    check_your_option.forbid_these_args("--help", "-H")
+    return check_your_option
 
 
-opt_checker = _check_opts() # set up the opt_checker
+opt_checker = _check_opts()  # set up the opt_checker
 
-def detect(whole_config=None, **kwargs):
-    para_config = whole_config[SECTION_DETECT]
+OPTION_CHECKERS = [opt_checker]
+
+
+def detect(para_config=None, **kwargs):
     opts_raw = py.body.cli_opts.merge_parameters(kwargs, para_config, SECTION_DETECT)
 
     _logger.debug("ciri-as args: %s" % str(opts_raw))
@@ -70,9 +91,11 @@ def detect(whole_config=None, **kwargs):
 
 
 def _get_detect_cmd(opts):
-    cmd_as = "perl {ciri_as_path}".format(ciri_as_path=opts.pop("ciri_as_path"))
-    cmd_as = " ".join([cmd_as, py.body.cli_opts.enum_all_opts(opts)])
-    return cmd_as.strip()
+    cmd_as = "perl {ciri_as_path}".format(ciri_as_path=opts.pop(_OPT_CIRI_AS_PATH))
+    cmd_latter = " ".join([py.body.cli_opts.drop_key(key, opts) for key in _ARGUMENT_ORDER if key in opts])
+
+    cmd_other = py.body.cli_opts.enum_all_opts(opts)
+    return " ".join([cmd_as, cmd_latter, cmd_other])
 
 
 def to_bed():

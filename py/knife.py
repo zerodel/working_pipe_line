@@ -3,18 +3,17 @@
 # author : zerodel
 # Readme:
 #
+import copy
 import os
 import os.path
-import copy
 import re
-import logging
 
-import py.body.option_check
-import py.body.worker
 import py.body.cli_opts
-import py.file_format.fq
-import py.body.utilities
 import py.body.logger
+import py.body.option_check
+import py.body.utilities
+import py.body.worker
+import py.file_format.fq
 
 _OPT_BASH_BIN = "bash_bin"
 
@@ -68,10 +67,15 @@ def _check_valid_read_directory(some_path):
             for sample in samples:
                 sample1 = "%s1" % sample
                 sample2 = "%s2" % sample
-                if (sample1 in base_names) != (sample2 in base_names):
-                    return False
-                if (sample1 in base_names) and (sample2 in base_names):
-                    at_least_a_pair = True
+
+                # todo: need a better check on fastq reads
+                if sample1 in base_names:
+                    return True
+
+                    # if (sample1 in base_names) != (sample2 in base_names):
+                    #     return False
+                    # if (sample1 in base_names) and (sample2 in base_names):
+                    #     at_least_a_pair = True
             else:
                 return at_least_a_pair
 
@@ -317,6 +321,9 @@ def _check_opts(opts=None):
 
 
 opt_checker = _check_opts()
+
+OPTION_CHECKERS = [opt_checker]
+
 
 def detect(par_dict=None, **kwargs):
     opts_of_index_phase_raw = py.body.cli_opts.merge_parameters(kwargs, par_dict, SECTION_DETECT)

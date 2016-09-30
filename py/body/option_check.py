@@ -12,10 +12,37 @@ __author__ = 'zerodel'
 
 _logger = py.body.logger.default_logger("opt_check")
 
+_description_template_default = """
+this section [{working}] contains following options:
+------  essential arguments ----
+
+{must_have}
+
+------  only one of these option pairs are needed   ------
+
+{equivalent}
+
+------  optional arguments  ------
+
+{optional}
+
+------  only one of these following options are optional    -----
+
+{equivalent_optional}
+
+
+------  these options are not allowed   ------
+
+{banned}
+
+
+        """
+
+
 
 class OptionChecker(object):
     def __init__(self, opt_dict=None, name="", logger=_logger):
-        self.checker_name = name
+        self.name = name
         self.dict_opt = opt_dict
         self.opts = []
         self.opts_equivalent = []
@@ -89,6 +116,7 @@ class OptionChecker(object):
     def one_and_only_one(self, equivalent_args, check_fun, exception_on_error, des_str=""):
         if isinstance(equivalent_args, list):
             self.opts_equivalent.append(equivalent_args)
+            self.descriptions[tuple(equivalent_args)] = des_str
             for opt in equivalent_args:
                 self.check_func[opt] = check_fun
                 self.exceptions[opt] = exception_on_error
@@ -99,6 +127,7 @@ class OptionChecker(object):
     def at_most_one(self, equivalent_args, check_fun, exception_on_error, des_str=""):
         if isinstance(equivalent_args, list):
             self.opts_optional_equivalent.append(equivalent_args)
+            self.descriptions[tuple(equivalent_args)] = des_str
             for opt in equivalent_args:
                 self.check_func[opt] = check_fun
                 self.exceptions[opt] = exception_on_error
@@ -175,30 +204,15 @@ class OptionChecker(object):
         self.opts_forbidden.extend(args)
 
     def __str__(self):
-        description = """
-this section [{working}]  contains following options:
-------        essential arguments ----
-
-{must_have}
-
-------      only one of these option pairs are needed      ------
-
-{equivalent}
-
-------      optional arguments        ------
-
-{optional}
-
-------      these options are not allowed         ------
-
-{banned}
-
-
-        """
 
         def _inner_make_pair_opt_desc(opts, desc_dict=self.descriptions):
-            return ["{opt}:\t{desc}".format(opt=opt, desc=desc_dict.get(opt, ""))
-                    for opt in opts]
+            out = []
+            for opt in opts:
+                if self.dict_opt and opt in self.dict_opt:
+                    out.append("{opt}:\t{desc}\t-\tvalue: {val}".format(opt=opt, desc=desc_dict.get(opt, ""), val=self.dict_opt.get(opt, "")))
+                else:
+                    out.append("{opt}:\t{desc}".format(opt=opt, desc=desc_dict.get(opt, "")))
+            return out
 
         must_have = "\n\n".join(_inner_make_pair_opt_desc(self.opts, self.descriptions))
 
@@ -206,13 +220,17 @@ this section [{working}]  contains following options:
 
         banned = "\n\n".join(self.opts_forbidden) if isinstance(self.opts_forbidden, list) else self.opts_forbidden
 
-        equivalent = "\n\n".join([str(x) for x in self.opts_equivalent])
+        equivalent = "\n\n".join(
+            ["%s :\t %s" % (str(tuple(x)), self.descriptions[tuple(x)]) for x in self.opts_equivalent])
+        optional_equivalent = "\n\n".join(
+            ["%s :\t %s" % (str(tuple(x)), self.descriptions[tuple(x)]) for x in self.opts_optional_equivalent])
 
-        return description.format(working=self.checker_name,
-                                  must_have=must_have,
-                                  equivalent=equivalent,
-                                  optional=optional,
-                                  banned=banned)
+        return _description_template_default.format(working=self.name,
+                                                    must_have=must_have,
+                                                    equivalent=equivalent,
+                                                    optional=optional,
+                                                    equivalent_optional=optional_equivalent,
+                                                    banned=banned)
 
     def custom_condition(self, custom_check_fun, desc=""):
         self.ad_hoc_conditions.append((custom_check_fun, desc))

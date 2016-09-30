@@ -4,9 +4,7 @@
 # Readme:
 #
 
-import os
 import Bio.SeqIO as bo
-
 
 __doc__ = '''
 '''
@@ -39,9 +37,9 @@ def get_read_length(fq):
     return len(one_read_entry.seq)
 
 
-
 if __name__ == "__main__":
     import sys
+
     if len(sys.argv) < 2:
         print(__doc__)
     else:

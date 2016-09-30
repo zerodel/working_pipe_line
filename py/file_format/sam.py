@@ -25,13 +25,9 @@ def parse(sam_file):
                 yield sam(line.strip())
 
 
-
-
-
-
-
 if __name__ == "__main__":
     import sys
+
     if len(sys.argv) < 2:
         print(__doc__)
     else:

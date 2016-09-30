@@ -72,7 +72,7 @@ class PredictedCircularRegion(object):
                                                     end=int(self.end),
                                                     featuretype="exon")]))
 
-        exon_filtered = []   # start filter exon objects
+        exon_filtered = []  # start filter exon objects
         for exon in exons_raw:
             exon_seqid, exon_source, exon_start, exon_end, exon_strand, exon_frame = exon
 
@@ -90,7 +90,7 @@ class PredictedCircularRegion(object):
 
             exon_filtered.append((exon_seqid, exon_source, exon_start, exon_end, exon_strand, exon_frame))
 
-        exon_filtered = sorted(exon_filtered, key = lambda x : x[2])
+        exon_filtered = sorted(exon_filtered, key=lambda x: x[2])
 
         artificial_exons = []
 

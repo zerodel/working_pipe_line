@@ -3,15 +3,15 @@
 # author : zerodel
 # Readme:
 #
-import os
 import copy
 import math
+import os
 
 import py.body.cli_opts
-import py.body.option_check
-import py.body.worker
-import py.body.utilities
 import py.body.logger
+import py.body.option_check
+import py.body.utilities
+import py.body.worker
 
 __doc__ = ''' wrapper of SALMON , contains two phase: 1. index 2. quantify,
  quantify has two sub mode: align mode and reads mode .
@@ -205,6 +205,7 @@ def _check_index_options(para_dict=None):
 
     return opt_checker
 
+
 def _check_quantify_options_alignment_mode(para_dict=None):
     opt_checker = py.body.option_check.OptionChecker(para_dict, name=SECTION_QUANTIFY + "_ALIGNMENT_MODE")
     opt_checker.one_and_only_one(["-a", _ALIGNMENTS], os.path.exists,
@@ -221,6 +222,7 @@ def _check_quantify_options_alignment_mode(para_dict=None):
 
     return opt_checker
 
+
 def _add_common_options_both_salmon_quantify_modes(opt_checker, para_dict):
     opt_checker.one_and_only_one(["-l", _LIB_TYPE], _is_legal_lib_type,
                                  KeyError("Error@SALMON_QUANTIFY: no suitable libtype for SALMON"),
@@ -236,6 +238,7 @@ def _add_common_options_both_salmon_quantify_modes(opt_checker, para_dict):
 
     opt_checker.forbid_these_args("-h", "--help", "-v", "--version")
     return opt_checker
+
 
 def _check_quantify_options_reads_mode(para_dict=None):
     opt_checker = py.body.option_check.OptionChecker(para_dict, name=SECTION_QUANTIFY + "_READS_MODE")
@@ -273,14 +276,15 @@ def _check_quantify_options(para_dict):
         _check_quantify_options_reads_mode(para_dict)
 
 
-
-
 #
 
 # %% start of main parts
 opt_checker_index = _check_index_options()
 opt_checker_quantify_align = _check_quantify_options_alignment_mode()
 opt_checker_quantify_reads = _check_quantify_options_reads_mode()
+
+OPTION_CHECKERS = [opt_checker_index, opt_checker_quantify_reads, opt_checker_quantify_align]
+
 
 def index(para_config=None, *args, **kwargs):
     opts_raw = py.body.cli_opts.merge_parameters(kwargs, para_config, SECTION_INDEX)

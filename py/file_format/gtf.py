@@ -8,6 +8,7 @@ __doc__ = '''
 '''
 __author__ = 'zerodel'
 
+
 class GTFerr(Exception):
     pass
 
@@ -50,7 +51,7 @@ class GTFitem(object):
         Constructor
         """
 
-        if not line_in_gtf:   # the "null" condition
+        if not line_in_gtf:  # the "null" condition
             self._seqname = ""
             self._source = ""
             self._feature = ''
@@ -61,7 +62,7 @@ class GTFitem(object):
             self._frame = "."
             self.init_null_attribute()
 
-        else:   # have content in the given gtf-file line
+        else:  # have content in the given gtf-file line
             self._parse_line(line_in_gtf)
 
     def seqname(self):
@@ -168,11 +169,11 @@ class GTFitem(object):
 
     def __eq__(self, other_gtf_item):
         return self._seqname == other_gtf_item.seqname() \
-            and self._start == other_gtf_item.starts() \
-            and self._end == other_gtf_item.ends() \
-            and self._strand == other_gtf_item.get_strand() \
-            and self.get_gene_id() == other_gtf_item.get_gene_id() \
-            and self.get_transcript_id() == other_gtf_item.get_transcript_id()
+               and self._start == other_gtf_item.starts() \
+               and self._end == other_gtf_item.ends() \
+               and self._strand == other_gtf_item.get_strand() \
+               and self.get_gene_id() == other_gtf_item.get_gene_id() \
+               and self.get_transcript_id() == other_gtf_item.get_transcript_id()
 
     def __len__(self):
         return self._end - self._start + 1
@@ -217,9 +218,8 @@ class GTFitem(object):
 
 if __name__ == "__main__":
     import sys
+
     if len(sys.argv) < 2:
         print(__doc__)
     else:
         pass
-
-

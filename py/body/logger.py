@@ -7,15 +7,11 @@
 import logging
 import os
 
-import py.body
-
 __doc__ = '''
 '''
 __author__ = 'zerodel'
 
-
 format_default = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-
 
 
 def default_logger(logger_name):

@@ -5,17 +5,17 @@
 #
 
 import os
-import logging
 
 import py.body
-import py.body.worker
 import py.body.logger
+import py.body.worker
 
 __doc__ = '''
 '''
 __author__ = 'zerodel'
 
 _logger = py.body.logger.default_logger("gffread_process")
+
 
 def build_cmd_gffread(annotation_files, genomic_seqs, output_fasta, transcript_filter="CME", gffread_cmd="gffread"):
     annotation_files = os.path.abspath(annotation_files)

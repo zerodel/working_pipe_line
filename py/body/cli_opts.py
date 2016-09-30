@@ -42,8 +42,8 @@ def cat_options_no_replace(options, opts_value_dict):
 
 def cat_options(options, opts_value_dict):
     return " ".join([option_and_value(key, opts_value_dict)
-                    for key in options
-                    if key in opts_value_dict])
+                     for key in options
+                     if key in opts_value_dict])
 
 
 def all_options(options):
@@ -60,8 +60,6 @@ def update_parameters(para_default, para_cli, para_conf):
     tmp_para.update(para_cli)
     tmp_para.update(para_conf)
     return tmp_para
-
-
 
 
 def merge_parameters(kwargs, para_config, config_section):

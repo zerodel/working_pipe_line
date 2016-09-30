@@ -7,11 +7,10 @@ import copy
 import os
 
 import py.body.cli_opts
+import py.body.logger
 import py.body.option_check
 import py.body.utilities
 import py.body.worker
-
-import py.body.logger
 
 __doc__ = ''' STAR commander line wrapper, contains two phase: 1.index, 2. align
 '''
@@ -251,6 +250,7 @@ def _option_check_align_phrase(updated_para=None):
 
 opt_checker_index = _option_check_index_phrase()
 opt_checker_align = _option_check_align_phrase()
+OPTION_CHECKERS = [opt_checker_index, opt_checker_align]
 
 
 def index(para_config=None, *args, **kwargs):

@@ -8,10 +8,10 @@ import os
 import os.path
 
 import py.body.cli_opts
-import py.body.option_check
-import py.body.worker
-import py.body.utilities
 import py.body.logger
+import py.body.option_check
+import py.body.utilities
+import py.body.worker
 
 _OPT_KMER_SIZE = "--kmerSize"
 
@@ -52,6 +52,7 @@ _OPT_MATE2 = "--mate2"
 _OPT_MATE1 = "--mate1"
 
 _logger = py.body.logger.default_logger("SAILFISH")
+
 
 def get_index_path(para_config=None, *args, **kwargs):
     updated_para = py.body.cli_opts.merge_parameters(kwargs, para_config, "SAILFISH_INDEX")
@@ -166,6 +167,8 @@ def _is_legal_lib_type(str_lib_type):
 
 opt_checker_index = _check_index_options()
 opt_checker_quantify = _check_quantify_options()
+
+OPTION_CHECKERS = [opt_checker_index, opt_checker_quantify]
 
 
 def index(para_config=None, *args, **kwargs):

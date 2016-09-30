@@ -13,7 +13,6 @@ __doc__ = '''
 '''
 __author__ = 'zerodel'
 
-
 __PATH_DEFAULT_CONFIG = "./default.conf"
 
 
@@ -32,7 +31,8 @@ def load_default_value(path_config_file=""):
     if py.body.config.GLOBAL_SECTION in config_loaded and py.body.config.META_SECTION in config_loaded:
         pass
     else:
-        raise KeyError("Error@loading_default_setting: must have 'META' and 'GLOBAL' section in {}".format(path_config_file))
+        raise KeyError(
+            "Error@loading_default_setting: must have 'META' and 'GLOBAL' section in {}".format(path_config_file))
 
     return config_loaded
 

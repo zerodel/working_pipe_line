@@ -9,10 +9,10 @@ import os.path
 
 import py.body.cli_opts
 import py.body.default_values
+import py.body.logger
 import py.body.option_check
 import py.body.utilities
 import py.body.worker
-import py.body.logger
 
 _DESC_SAMPLE_NAME = """The name of the sample analyzed.
 All output files are prefixed by this name (e.g., sample_name.genes.results)"""
@@ -76,6 +76,7 @@ def interpret_seq_files(input_files):
     else:
         return {}
 
+
 def _get_cmd_make_index(updated_para):
     cmd_prepare_reference = "{rsem_bin_prepare_reference}".format(**updated_para)
 
@@ -85,7 +86,6 @@ def _get_cmd_make_index(updated_para):
     cmd_prepare_reference += _ESSENTIAL_ARGS_REFERENCE.format(**updated_para)
 
     return cmd_prepare_reference
-
 
 
 def _get_cmd_calculate_expression(options):
@@ -122,7 +122,7 @@ def _get_cmd_calculate_expression(options):
 
 
 def _option_check_index_rsem(updated_para=None):
-    opt_checker =  py.body.option_check.OptionChecker(updated_para, name=SECTION_INDEX)
+    opt_checker = py.body.option_check.OptionChecker(updated_para, name=SECTION_INDEX)
     opt_checker.must_have("reference_fasta_files", os.path.exists,
                           FileNotFoundError("Error: fasta reference file not found as rsem reference"),
                           _DESC_REFERENCE_FASTA_FILES)
@@ -132,8 +132,9 @@ def _option_check_index_rsem(updated_para=None):
                           _DESC_REFERENCE_NAME)
     return opt_checker
 
+
 def _option_check_quantify_rsem(updated_para=None):
-    quantify_opt_check =  py.body.option_check.OptionChecker(updated_para, name=SECTION_QUANTIFY)
+    quantify_opt_check = py.body.option_check.OptionChecker(updated_para, name=SECTION_QUANTIFY)
     quantify_opt_check.must_have("reference_name", is_path_contain_index,
                                  FileNotFoundError("ERROR: rsem reference file not specified"),
                                  _DESC_EXPRESSION_REFERENCE_NAME)
@@ -141,9 +142,13 @@ def _option_check_quantify_rsem(updated_para=None):
                                  FileNotFoundError("ERROR: rsem sample file not specified"), _DESC_SAMPLE_NAME)
     return quantify_opt_check
 
+
 _logger = py.body.logger.default_logger("RSEM")
 opt_checker_index = _option_check_index_rsem()
 opt_checker_quantify = _option_check_quantify_rsem()
+
+OPTION_CHECKERS = [opt_checker_index, opt_checker_quantify]
+
 
 def index(para_config=None, *args, **kwargs):
     opts_index_rsem_raw = py.body.cli_opts.merge_parameters(kwargs, para_config, SECTION_INDEX)
@@ -160,7 +165,6 @@ def index(para_config=None, *args, **kwargs):
         print("Report: already have a RSEM index in {}".format(get_index_path(opts_index_rsem)))
 
     return opts_index_rsem_raw
-
 
 
 def quantify(para_config=None, *args, **kwargs):

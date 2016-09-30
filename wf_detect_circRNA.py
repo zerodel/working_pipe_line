@@ -20,7 +20,6 @@ __doc__ = ''' top level interface of circRNA detection workflow.
 '''
 __author__ = 'zerodel'
 
-
 available_tools = {
     "bwa": py.bwa,
     "ciri": py.ciri,
@@ -32,15 +31,15 @@ WORK_FLOW_NAME = "workflow_circRNA_detection"
 
 _logger = py.body.logger.default_logger(WORK_FLOW_NAME)
 
+
 def _cli_arg_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument("cfg_file", help="file path to a configuration file of detection job")
-    parser.add_argument("-l", "--log_file", help="logging file path" , default="")
+    parser.add_argument("-l", "--log_file", help="logging file path", default="")
     return parser
 
 
 def main(cfg):
-
     _logger.debug("configure is a {} , and content is {}".format(type(cfg), str(cfg)))
 
     user_config = py.body.config.config(cfg) if cfg else py.body.default_values.load_default_value()
@@ -57,10 +56,11 @@ def _do_detect_circ(name_of_detector, user_config, seqs=""):
         raise KeyError("Error: no such circular RNA detection tool : {}".format(name_of_detector))
 
     detector = available_tools[name_of_detector]
-    if detector.DETECT_SECTION not in user_config:
-        raise KeyError("Error@config file: no config part %s for detector %s" % (detector.DETECT_SECTION, name_of_detector))
+    if detector.SECTION_DETECT not in user_config:
+        raise KeyError(
+            "Error@config file: no config part %s for detector %s" % (detector.SECTION_DETECT, name_of_detector))
 
-    config_detector = dict(user_config[detector.DETECT_SECTION])
+    config_detector = dict(user_config[detector.SECTION_DETECT])
     _logger.debug("content of detector is =====\n{}\n".format(str(config_detector)))
 
     detector.detect(config_detector)

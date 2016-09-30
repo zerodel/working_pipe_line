@@ -144,6 +144,8 @@ def _option_check_index_phrase(opts_index=None):
 opt_checker_index = _option_check_index_phrase()
 opt_checker_align = _option_check_align_phrase()
 
+OPTION_CHECKERS = [opt_checker_index, opt_checker_align]
+
 
 def index(para_config=None, **kwargs):
     opts_of_index_phase_raw = py.body.cli_opts.merge_parameters(kwargs, para_config, SECTION_INDEX)
@@ -182,7 +184,6 @@ def align(para_config=None, **kwargs):
         bwa_cmd.run()
 
     return align_phrase_options_raw
-
 
 
 if __name__ == "__main__":

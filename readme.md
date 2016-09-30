@@ -26,6 +26,7 @@ a controller/checker should be established, and should provide following feature
     1.check the options before invoking external tools, show description message when error occurs
     2.give some query/info interface
 
+every module which contains a option_checker should have this constant *OPTION_CHECKERS* , which is a list of opt-checker objects 
 
 ### output / logging part ###
 yes , the output file is the logging file, and should use the standard logging module. ... but still undone yet . 

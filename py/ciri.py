@@ -8,12 +8,12 @@ import os
 import os.path
 
 import py.body.cli_opts
+import py.body.logger
 import py.body.option_check
+import py.body.utilities
 import py.body.worker
 import py.bwa
-import py.body.utilities
 import py.file_format.fa
-import py.body.logger
 
 __doc__ = ''' this is the wrapper of CIRI version 1, it contains one phase: detection
 '''
@@ -259,6 +259,9 @@ def _check_opts(args_dict=None):
 
 opt_checker = _check_opts()
 
+OPTION_CHECKERS = [opt_checker]
+
+
 def _get_detect_cmd(opts_raw):
     opts = copy.copy(opts_raw)
     cmd_corp = "perl {ciri_path}".format(ciri_path=opts.pop("ciri_path"))
@@ -306,7 +309,6 @@ def detect(par_dict=None, **kwargs):
     py.body.worker.run(cmd_detect)
 
     return opts_of_index_phase_raw
-
 
 
 def optional_mapping_using_bwa(meta_setting, **kwargs):

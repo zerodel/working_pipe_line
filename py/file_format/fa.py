@@ -4,10 +4,10 @@
 # Readme:
 #
 
-import Bio.Seq
-import Bio.SeqIO
 import functools
 
+import Bio.Seq
+import Bio.SeqIO
 
 __doc__ = '''
 '''
@@ -24,11 +24,12 @@ def convert_all_entries_in_fasta(fa_in, fa_out, convert_fun):
 
 def make_adapter(k):
     def fun_inner(fa, kmer_len):
-        kmer_len_fixed = kmer_len - 1 if kmer_len >=1 else 0
+        kmer_len_fixed = kmer_len - 1 if kmer_len >= 1 else 0
         fa_seq = str(fa.seq)
         fa_seq = "{}{}".format(fa_seq[-kmer_len_fixed:], fa_seq)
         fa.seq = Bio.Seq.Seq(fa_seq)
         return fa
+
     return functools.partial(fun_inner, kmer_len=k)
 
 
@@ -38,6 +39,7 @@ def pad_for_effective_length(length_needed):
         fa_seq = "{}{}".format("N" * len_you_need, fa_seq)
         fa.seq = Bio.Seq.Seq(fa_seq)
         return fa
+
     return functools.partial(fun_inner, len_you_need=length_needed)
 
 
