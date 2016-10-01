@@ -13,31 +13,33 @@ __author__ = 'zerodel'
 _logger = py.body.logger.default_logger("opt_check")
 
 _description_template_default = """
-this section [{working}] contains following options:
-------  essential arguments ----
+
+
+[{working}]
+# this section [{working}] contains following options:
+#######  essential arguments
 
 {must_have}
 
-------  only one of these option pairs are needed   ------
+#######  only one of these option pairs are needed
 
 {equivalent}
 
-------  optional arguments  ------
+#######  optional arguments
 
 {optional}
 
-------  only one of these following options are optional    -----
+#######  only one of these following options are optional
 
 {equivalent_optional}
 
 
-------  these options are not allowed   ------
+#######  these options are not allowed
 
 {banned}
 
 
         """
-
 
 
 class OptionChecker(object):
@@ -205,25 +207,37 @@ class OptionChecker(object):
 
     def __str__(self):
 
+        def _add_sharp_head(str_description):
+            return "\n".join(["# %s" % x.strip() for x in str_description.strip().split("\n")])
+
         def _inner_make_pair_opt_desc(opts, desc_dict=self.descriptions):
             out = []
             for opt in opts:
+                str_description = _add_sharp_head(desc_dict.get(opt, ""))
                 if self.dict_opt and opt in self.dict_opt:
-                    out.append("{opt}:\t{desc}\t-\tvalue: {val}".format(opt=opt, desc=desc_dict.get(opt, ""), val=self.dict_opt.get(opt, "")))
+                    out.append(
+                        "{opt} = {val}\n{desc}".format(opt=opt, desc=str_description, val=self.dict_opt.get(opt, "")))
                 else:
-                    out.append("{opt}:\t{desc}".format(opt=opt, desc=desc_dict.get(opt, "")))
+                    out.append("{opt}\n{desc}".format(opt=opt, desc=str_description))
             return out
+
+        def _display_option_group(option_groups, description_dict):
+            return "\n\n".join(
+                ["%s\n%s" % (
+                    '/'.join(grp), _add_sharp_head(description_dict[tuple(grp)])) for
+                 grp
+                 in option_groups])
 
         must_have = "\n\n".join(_inner_make_pair_opt_desc(self.opts, self.descriptions))
 
         optional = "\n\n".join(_inner_make_pair_opt_desc(self.opts_optional, self.descriptions))
 
-        banned = "\n\n".join(self.opts_forbidden) if isinstance(self.opts_forbidden, list) else self.opts_forbidden
+        banned = "\n\n".join(["# # %s" % x.strip() for x in self.opts_forbidden]) if isinstance(self.opts_forbidden,
+                                                                                                list) else "# %s" % self.opts_forbidden
 
-        equivalent = "\n\n".join(
-            ["%s :\t %s" % (str(tuple(x)), self.descriptions[tuple(x)]) for x in self.opts_equivalent])
-        optional_equivalent = "\n\n".join(
-            ["%s :\t %s" % (str(tuple(x)), self.descriptions[tuple(x)]) for x in self.opts_optional_equivalent])
+        equivalent = _display_option_group(self.opts_equivalent, self.descriptions)
+
+        optional_equivalent = _display_option_group(self.opts_optional_equivalent, self.descriptions)
 
         return _description_template_default.format(working=self.name,
                                                     must_have=must_have,

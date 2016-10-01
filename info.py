@@ -29,7 +29,10 @@ def show_it(tool_name):
     except KeyError as e:
         print("no such tool as %s" % tool_name)
         raise e
-    print(wrapper_tool.__doc__)
+
+    module_desc =  wrapper_tool.__doc__
+    module_desc = "\n".join(["# %s" % line for line in module_desc.strip().split('\n')])
+    print(module_desc)
 
     default_config = py.body.default_values.load_default_value()
     for checker in wrapper_tool.OPTION_CHECKERS:
@@ -45,6 +48,8 @@ def reveal():
         if key in _tool_description:
             print("%s \t-\t %s " % (key, _tool_description[key]))
 
+    print("\n")
+    print(r""" you could use 'grep -v "^#\ " | grep -v "^$" to filter out the options and use it directly in your config file """)
 
 def _add_tool(name, wrapper, description):
     _tool_wrapper[name] = wrapper
