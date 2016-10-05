@@ -30,7 +30,7 @@ def show_it(tool_name):
         print("no such tool as %s" % tool_name)
         raise e
 
-    module_desc =  wrapper_tool.__doc__
+    module_desc = wrapper_tool.__doc__
     module_desc = "\n".join(["# %s" % line for line in module_desc.strip().split('\n')])
     print(module_desc)
 
@@ -49,7 +49,9 @@ def reveal():
             print("%s \t-\t %s " % (key, _tool_description[key]))
 
     print("\n")
-    print(r""" you could use 'grep -v "^#\ " | grep -v "^$" to filter out the options and use it directly in your config file """)
+    print(
+        r""" you could use 'grep -v "^#\ " | grep -v "^$"' to filter out the options and use them in config file """)
+
 
 def _add_tool(name, wrapper, description):
     _tool_wrapper[name] = wrapper
