@@ -201,13 +201,13 @@ def main(path_config, forced_refresh=False):
 
 
 def _prepare_circular_rna_annotation(circ_detection_report, circ_profile_config, circular_rna_gtf, genomic_annotation):
-    if not _OPT_CIRI_AS_OUTPUT_PREFIX in circ_profile_config:
+    if _OPT_CIRI_AS_OUTPUT_PREFIX not in circ_profile_config:
         _gtf_operator.do_make_gtf_for_circular_prediction_greedy(circular_candidate_regions=circ_detection_report,
                                                                  gff_db=genomic_annotation,
                                                                  output_gtf_path_name=circular_rna_gtf)
     else:
         circ_as_file_prefix = _catch_one(circ_profile_config, _OPT_CIRI_AS_OUTPUT_PREFIX)
-        py.file_format.ciri_as_to_gtf.transform_as_to_gtf_showing_as_event(circ_as_file_prefix, circular_rna_gtf)
+        py.file_format.ciri_as_to_gtf.transform_as_path_to_gtf(circ_as_file_prefix, circular_rna_gtf)
 
 
 def _prepare_linear_transcriptome(genome_fa, genomic_annotation, spliced_linear_reference):

@@ -15,8 +15,8 @@ __doc__ = ''' read .ini format config file ,
 
 __author__ = 'zerodel'
 
-META_SECTION = "META"
-GLOBAL_SECTION = "GLOBAL"
+SECTION_META = "META"
+SECTION_GLOBAL = "GLOBAL"
 
 
 def _get_parser(is_case_sensitive=True, **kwargs):

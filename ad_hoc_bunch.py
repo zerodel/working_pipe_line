@@ -200,8 +200,8 @@ def _quantify_result_path(sra):
 
 
 def get_sra_id_in_config(cfg):
-    if py.body.config.GLOBAL_SECTION in cfg:
-        job_ids = [x.strip() for x in cfg[py.body.config.GLOBAL_SECTION][JOB_ID_SECTION].strip().split(" ")
+    if py.body.config.SECTION_GLOBAL in cfg:
+        job_ids = [x.strip() for x in cfg[py.body.config.SECTION_GLOBAL][JOB_ID_SECTION].strip().split(" ")
                    if x]
         return job_ids
     else:
@@ -209,9 +209,9 @@ def get_sra_id_in_config(cfg):
 
 
 def _get_tap_root_from_cfg(cfg):
-    if py.body.config.GLOBAL_SECTION in cfg:
+    if py.body.config.SECTION_GLOBAL in cfg:
 
-        part_global = cfg[py.body.config.GLOBAL_SECTION]
+        part_global = cfg[py.body.config.SECTION_GLOBAL]
         if WORKING_PATH_SECTION in part_global:
             return part_global[WORKING_PATH_SECTION]
         else:

@@ -19,14 +19,14 @@ available_tools = {
     "bwa": py.bwa
 }
 
-ALIGNER_SECTION = "mapper"
+_OPT_KEY_NAME_ALIGNER = "mapper"
 
 
 def work(whole_config_content=None, aligner_name=None, ref_path=None, input_files=None):
     aligner = available_tools[aligner_name]
 
-    setting_index = dict(whole_config_content[aligner.INDEX_SECTION])
-    setting_align = dict(whole_config_content[aligner.ALIGN_SECTION])
+    setting_index = dict(whole_config_content[aligner.SECTION_INDEX])
+    setting_align = dict(whole_config_content[aligner.SECTION_ALIGN])
     # get index
     index_path = aligner.get_index_path(_prepare_index(setting_index, aligner, ref_path))
     # do index
@@ -52,7 +52,7 @@ def _do_align(align_config, aligner, aligner_ref, input_files):
 
 def main(config_file):
     config_latter = py.body.config.config(config_file)
-    align_name = config_latter[py.body.config.GLOBAL_SECTION][ALIGNER_SECTION]
+    align_name = config_latter[py.body.config.SECTION_GLOBAL][_OPT_KEY_NAME_ALIGNER]
     work(config_latter, align_name)
 
 

@@ -22,7 +22,7 @@ available_tools = {
     "salmon": py.salmon
 }
 
-QUANTIFIER_SECTION = "quantifier"
+_OPT_KEY_NAME_QUANTIFIER = "quantifier"
 
 def work(whole_config_content=None, quantifier_name=None, inputs=None):
     quantifier = available_tools[quantifier_name]
@@ -56,7 +56,7 @@ def _do_quantify(quantify_config, quantifier, quantify_ref, inputs):
 
 def main(config_file):
     config_latter = py.body.config.config(config_file)
-    quantifier_name = config_latter[py.body.config.GLOBAL_SECTION][QUANTIFIER_SECTION]
+    quantifier_name = config_latter[py.body.config.SECTION_GLOBAL][_OPT_KEY_NAME_QUANTIFIER]
     work(config_latter, quantifier_name)
 
 

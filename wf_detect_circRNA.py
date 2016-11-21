@@ -44,7 +44,7 @@ def main(cfg):
 
     user_config = py.body.config.config(cfg) if cfg else py.body.default_values.load_default_value()
 
-    detector_name = user_config[py.body.config.GLOBAL_SECTION]["detector"]
+    detector_name = user_config[py.body.config.SECTION_GLOBAL]["detector"]
 
     _logger.debug("using %s as detector" % detector_name)
 

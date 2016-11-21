@@ -28,7 +28,7 @@ def load_default_value(path_config_file=""):
 
     config_loaded = py.body.config.single_config(path_config_file)
 
-    if py.body.config.GLOBAL_SECTION in config_loaded and py.body.config.META_SECTION in config_loaded:
+    if py.body.config.SECTION_GLOBAL in config_loaded and py.body.config.SECTION_META in config_loaded:
         pass
     else:
         raise KeyError(

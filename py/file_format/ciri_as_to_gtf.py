@@ -4,14 +4,14 @@
 # Readme:
 #
 
+import os
 import copy
-import csv
-from collections import namedtuple
+
 
 import py.body.logger
 import py.file_format.gtf
 
-__doc__ = ''' transform CIRI-AS output file into gtf file
+__doc__ = ''' transform CIRI-ASv1.2 output file into gtf file
 '''
 __author__ = 'zerodel'
 
@@ -22,157 +22,116 @@ as_event_file = "circRNA_id	alternatively_spliced_exon	AS_type	psi_estimation_wi
 _logger = py.body.logger.default_logger("transform_ciri_as_to_gtf")
 
 
-def _exons_showing_a5ss_of_one_circRNA(sorted_exons, a5ss_event):  # a5ss means 5' splice site change
-    start, end = a5ss_event.alternatively_spliced_exon.strip().split(":")
-    output_exons = []
-    for exon in sorted_exons:
-        if exon.cirexon_start == start and exon.cirexon_end != end:
-            continue
-        output_exons.append(exon)
-    return output_exons
-
-
-def _exons_showing_a3ss_of_one_circRNA(sorted_exons, a3ss_event):
-    start, end = a3ss_event.alternatively_spliced_exon.strip().split(":")
-    output_exons = []
-    for exon in sorted_exons:
-        if exon.cirexon_start != start and exon.cirexon_end == end:
-            continue
-        output_exons.append(exon)
-    return output_exons
-
-
-def _exons_showing_es_of_one_circRNA(sorted_exons, es_event):
-    start, end = es_event.alternatively_spliced_exon.strip().split(":")
-    output_exons = []
-    for exon in sorted_exons:
-        if exon.cirexon_start == start and exon.cirexon_end == end:
-            continue
-        output_exons.append(exon)
-    return output_exons
-
-
-def _exons_showing_ir_of_one_circRNA(sorted_exons, ir_event):  # todo: not knowing how to deal with it
-    return copy.copy(sorted_exons)
-
-
-def _remove_bracket(str_header):
-    import re
-    return re.sub("\([A-Za-z0-9\_\-]+\)", "", str_header)
-
-
-def _remove_sharp(str_header):
-    import re
-    return re.sub("#", "", str_header)
-
-
-def parse_ciri_as_list_as_named_tuples(ciri_as_output_file, sep="\t"):
-    with open(ciri_as_output_file) as f:
-        header = next(f)
-        header = _remove_bracket(header)
-        header = _remove_sharp(header)
-        header_name = namedtuple("as_row", [x for x in header.strip().split(sep)])
-
-        rdr = csv.reader(f, delimiter=sep)
-        for line in rdr:
-            yield (header_name(*line))
-
-
-def _make_gtf_entry_from_ciri_as_list_entry(cir_exon):
-    artificial_exon = py.file_format.gtf.GTFitem()
-    artificial_exon.set_start(int(cir_exon.cirexon_start))
-    artificial_exon.set_end(int(cir_exon.cirexon_end))
-    artificial_exon.set_gene_id(cir_exon.gene_id)
-    artificial_exon.set_transcript_id(cir_exon.circRNA_id)
-    artificial_exon.set_seqname(cir_exon.chr)
-    artificial_exon.set_source("ciri")
-    artificial_exon.set_feature("exon")
-    artificial_exon.set_strand(cir_exon.strand)
-    artificial_exon.set_frame(".")
-    return artificial_exon
-
-
-def transform_as_output_to_gtf(ciri_as_file_prefix, gtf_file):
-    exons_of = _load_circular_exon_list_as_dict(_get_ciri_as_file_path_of_exon_list(ciri_as_file_prefix))
-
-    gtf_entries = [_make_gtf_entry_from_ciri_as_list_entry(exon) for circRNA_id in exons_of for exon in
-                   exons_of[circRNA_id]]
-
-    with open(gtf_file, "w") as write_it:
-        write_it.write("\n".join([str(entry) for entry in gtf_entries]))
-
-
-def _load_circular_exon_list_as_dict(as_file):
-    exons_of = {}
-    for row in parse_ciri_as_list_as_named_tuples(as_file):
-        exons_of.setdefault(row.circRNA_id, []).append(row)
-    for circ_id in exons_of:  # sort exons
-        exons_of[circ_id] = sorted(exons_of[circ_id], key=lambda x: x.cirexon_start)
-    return exons_of
-
-
-def _load_alternative_splice_events_to_dict(as_file):
-    alter_splice_of = {}
-    for row in parse_ciri_as_list_as_named_tuples(as_file):
-        alter_splice_of.setdefault(row.circRNA_id, []).append(row)
-    return alter_splice_of
-
-
-deal_with_as_event = {"A5SS": _exons_showing_a5ss_of_one_circRNA,
-                      "A3SS": _exons_showing_a3ss_of_one_circRNA,
-                      "ES": _exons_showing_es_of_one_circRNA,
-                      "IR": _exons_showing_ir_of_one_circRNA
-                      }
-
-
-def _exons_showing_as_event(exons, event):
-    as_type = str(event.AS_type).strip().strip(",")
-    return deal_with_as_event[as_type](exons, event)
-
-
 def _get_ciri_as_file_path_of_alternative_splicing_events(ciri_as_file_prefix):
     return "_".join([ciri_as_file_prefix, "AS.list"])
+
+
+def _get_ciri_path_file_path(ciri_as_file_prefix):
+    return "_".join([ciri_as_file_prefix, "path.output"])
+
+
+def _get_ciri_log2_file_path(ciri_as_file_prefix):
+    return ".".join([ciri_as_file_prefix, "log2"])
 
 
 def _get_ciri_as_file_path_of_exon_list(ciri_as_file_prefix):
     return ".".join([ciri_as_file_prefix, "list"])
 
 
-def transform_as_to_gtf_showing_as_event(ciri_as_file_prefix, gtf_file):
-    exons_of = _load_circular_exon_list_as_dict(_get_ciri_as_file_path_of_exon_list(ciri_as_file_prefix))
+def _load_ciri_exons_from_exon_file_to_gtf_entries(file_path_exon_file):
+    gtf_entry_of_circ_exon = {}
 
-    splice_events_of = _load_alternative_splice_events_to_dict(
-        _get_ciri_as_file_path_of_alternative_splicing_events(ciri_as_file_prefix))
+    with open(file_path_exon_file) as exon_table:
+        header = exon_table.readline().strip().split("\t")
+        pos_index_circRNA_id = header.index("circRNA_id")
+        pos_index_chr = header.index("chr")
 
-    _logger.debug("there is %d transcripts have as events " % sum([1 for x in splice_events_of]))
+        pos_index_cirexon_start = header.index("cirexon_start")
+        pos_index_cirexon_end = header.index("cirexon_end")
+        pos_index_strand_this_exon = header.index("strand")
+        pos_index_gene_id_this_exon = header.index("gene_id")
 
-    output_gtf_entries = []
-    for circ_id in exons_of:
-        exons_this = exons_of[circ_id]
+        for line in exon_table:
+            parts = line.strip().split("\t")
+            id_circ_rna = parts[pos_index_circRNA_id]
 
-        if circ_id in splice_events_of:
-            isoform_count = 0
-            for event in splice_events_of[circ_id]:
+            chr = parts[pos_index_chr]
+            gene_id = parts[pos_index_gene_id_this_exon]
+            start_exon = parts[pos_index_cirexon_start]
+            end_exon = parts[pos_index_cirexon_end]
+            strand_unique = parts[pos_index_strand_this_exon]
 
-                exons_this_event = _exons_showing_as_event(exons_this, event)
-                gtf_of_this_event = [_make_gtf_entry_from_ciri_as_list_entry(exon) for exon in exons_this_event]
+            unique_id = "%s=>%s:%s" % (id_circ_rna,
+                                       start_exon,
+                                       end_exon)
 
-                for exon in gtf_of_this_event:
-                    exon.set_transcript_id("%s.%d" % (circ_id, isoform_count))
+            gtf_entry_of_circ_exon[unique_id] = _make_gtf_entry_exon(
+                start=start_exon,
+                end=end_exon,
+                gene_id=gene_id,
+                circRNA_id=id_circ_rna,
+                chr=chr,
+                strand=strand_unique
+            )
 
-                output_gtf_entries.extend(gtf_of_this_event)
-                isoform_count += 1
-        else:
-            output_gtf_entries.extend([_make_gtf_entry_from_ciri_as_list_entry(exon) for exon in exons_this])
-
-    with open(gtf_file, "w") as write_gtf_file:
-        write_gtf_file.write("\n".join([str(gtf_entry) for gtf_entry in output_gtf_entries]))
+    return gtf_entry_of_circ_exon
 
 
-if __name__ == "__main__":
-    import sys
+def _make_gtf_entry_exon(start, end, gene_id, circRNA_id, chr, strand):
+    artificial_exon = py.file_format.gtf.GTFitem()
+    artificial_exon.set_start(int(start))
+    artificial_exon.set_end(int(end))
+    artificial_exon.set_gene_id(gene_id)
+    artificial_exon.set_transcript_id(circRNA_id)
+    artificial_exon.set_seqname(chr)
+    artificial_exon.set_source("ciri")
+    artificial_exon.set_feature("exon")
+    artificial_exon.set_strand(strand)
+    artificial_exon.set_frame(".")
+    return artificial_exon
 
-    if len(sys.argv) < 2:
-        print(__doc__)
-    else:
-        transform_as_output_to_gtf(sys.argv[-2], sys.argv[-1])
+
+def transform_as_path_to_gtf(ciri_as_file_prefix, gtf_file):
+    path_to_ciri_exon_file = _get_ciri_as_file_path_of_exon_list(ciri_as_file_prefix)
+    isoform_file_path = _get_ciri_path_file_path(ciri_as_file_prefix)
+    isoform_file_path = isoform_file_path if os.path.exists(isoform_file_path) else _get_ciri_log2_file_path(
+        ciri_as_file_prefix)
+
+    if not os.path.exists(isoform_file_path):
+        raise FileNotFoundError("no enough information file .. make sure you are exporting all details of CIRI-AS")
+
+    if not os.path.exists(path_to_ciri_exon_file):
+        raise FileNotFoundError("no ciri-as result file as %s" % path_to_ciri_exon_file)
+
+    gtf_entries_of_exon = _load_ciri_exons_from_exon_file_to_gtf_entries(path_to_ciri_exon_file)
+
+    exons_circular = []
+    circ_junction = ""
+    count_isoform_same_junction = 0
+    with open(isoform_file_path) as as_out:
+        for line in as_out:
+            if "->path" in line and "=>" in line:
+                parts = line.strip().split("\t")
+                circ_rna = parts[0].strip().split("->")[0]
+                if not circ_rna == circ_junction:
+                    circ_junction = circ_rna
+                    count_isoform_same_junction = 0
+                else:
+                    count_isoform_same_junction += 1
+
+                id_isoform_this_junction = "%s.%d" % (circ_junction, count_isoform_same_junction)
+
+                exon_ranges = [x.strip().split("=>")[-1] for x in parts[1].strip().split(",") if x]
+
+                for exon_range in exon_ranges:
+                    unique_exon_id = "%s=>%s" % (circ_rna, exon_range)
+                    exon_get = gtf_entries_of_exon.get(unique_exon_id, None)
+
+                    if exon_get is not None:
+                        exon_to_export = copy.copy(exon_get)
+
+                        exon_to_export.set_transcript_id(id_isoform_this_junction)
+                        exons_circular.append(str(exon_to_export))
+
+    with open(gtf_file, "w") as output_gtf:
+        output_gtf.write("\n".join(exons_circular))
