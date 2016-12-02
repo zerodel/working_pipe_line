@@ -88,29 +88,28 @@ class PredictedCircularRegion(object):
             if exon_end > self.end + OVERLAP_WINDOW_WIDTH:
                 exon_end = self.end
 
-            exon_filtered.append((exon_seqid, exon_source, exon_start, exon_end, exon_strand, exon_frame))
+            exon_filtered.append((exon_seqid, exon_source, exon_start, exon_end, exon_strand.strip(), exon_frame))
 
         exon_filtered = sorted(exon_filtered, key=lambda x: x[2])
 
         artificial_exons = []
 
+        transcript_id = self.predict_id
+        gene_id = "n/a"
+
         if len(self.predict_id.split("@")) == 2:
             transcript_id, gene_id = self.predict_id.split("@")
-        else:
-            transcript_id = self.predict_id
-            gene_id = "n/a"
 
         for exon_locus in exon_filtered:
             exon_seqid, exon_source, exon_start, exon_end, exon_strand, exon_frame = exon_locus
 
-            artificial_exons.append(self.generate_exon_for_circular_isoform(host_seqname=exon_seqid,
-                                                                            start=exon_start,
-                                                                            end=exon_end,
-                                                                            host_gene_id=gene_id,
-                                                                            host_tran_id=transcript_id,
-                                                                            strand=exon_strand,
-                                                                            frame=exon_frame
-                                                                            )
+            transcript_id_show_strand = "%s.r" % transcript_id.strip() if exon_strand == "-" else \
+                transcript_id.strip()
+
+            neo_isoform = self.generate_exon_for_circular_isoform(host_seqname=exon_seqid, start=exon_start, end=exon_end,
+                                                              host_gene_id=gene_id, host_tran_id=transcript_id_show_strand,
+                                                              strand=exon_strand, frame=exon_frame)
+            artificial_exons.append(neo_isoform
                                     )
         return artificial_exons
 

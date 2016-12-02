@@ -6,37 +6,36 @@
 
 import argparse
 
+import py.bwa
+import py.ciri
+import py.knife
+
 import py.body.cli_opts
 import py.body.config
 import py.body.default_values
 import py.body.logger
-
 import py.wrapper.ciri_as
-import py.wrapper.bwa
-import py.wrapper.ciri
-import py.wrapper.knife
 
-from py.body.logger import set_logger_file
 
-__doc__ = ''' top level interface of circRNA detection workflow.
+__doc__ = ''' top level interface of detecting circular isoform
 '''
 __author__ = 'zerodel'
 
 available_tools = {
-    "bwa": py.wrapper.bwa,
-    "ciri": py.wrapper.ciri,
     "ciri_as": py.wrapper.ciri_as,
-    "knife": py.wrapper.knife
 }
 
-WORK_FLOW_NAME = "workflow_circRNA_detection"
+WORK_FLOW_NAME = "workflow_circRNA_isoform_detection"
 
 _logger = py.body.logger.default_logger(WORK_FLOW_NAME)
 
 
+_OPT_KEY_ISOFORM_DETECTOR = "isoform_detector"
+
+
 def __cli_arg_parser():
     parser = argparse.ArgumentParser()
-    parser.add_argument("cfg_file", help="file path to a configuration file of detection job")
+    parser.add_argument("cfg_file", help="file path to a configuration file of isoform detection")
     parser.add_argument("-l", "--log_file", help="logging file path", default="")
     return parser
 
@@ -46,14 +45,14 @@ def main(cfg):
 
     user_config = py.body.config.config(cfg) if cfg else py.body.default_values.load_default_value()
 
-    detector_name = user_config[py.body.config.SECTION_GLOBAL]["detector"]
+    detector_name = user_config[py.body.config.SECTION_GLOBAL][_OPT_KEY_ISOFORM_DETECTOR]
 
-    _logger.debug("using %s as detector" % detector_name)
+    _logger.debug("using %s as isoform detector " % detector_name)
 
-    _do_detect_circ(detector_name, user_config)
+    _do_detect_circular_isoform(detector_name, user_config)
 
 
-def _do_detect_circ(name_of_detector, user_config, seqs=""):
+def _do_detect_circular_isoform(name_of_detector, user_config):
     if name_of_detector not in available_tools:
         raise KeyError("Error: no such circular RNA detection tool : {}".format(name_of_detector))
 
@@ -71,5 +70,5 @@ def _do_detect_circ(name_of_detector, user_config, seqs=""):
 if __name__ == "__main__":
     arg_parser = __cli_arg_parser()
     args = arg_parser.parse_args()
-    _logger = set_logger_file(_logger, args.log_file)
+    _logger = py.body.logger.set_logger_file(_logger, args.log_file)
     main(args.cfg_file)

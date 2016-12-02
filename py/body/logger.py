@@ -33,7 +33,7 @@ def log_to_file(logger, log_file_path):
     return logger
 
 
-def _set_logger_file(logger, log_file, file_default="top_level.log"):
+def set_logger_file(logger, log_file, file_default="top_level.log"):
     path_abs = os.path.abspath(os.curdir)
     log_file_path = log_file if log_file else os.path.join(path_abs, file_default)
     return log_to_file(logger, log_file_path)

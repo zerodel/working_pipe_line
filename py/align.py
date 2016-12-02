@@ -6,17 +6,16 @@
 
 import py.body.cli_opts
 import py.body.config
-import py.bwa
-import py.star
-
+import py.wrapper.bwa
+import py.wrapper.star
 
 __doc__ = '''
 '''
 __author__ = 'zerodel'
 
 available_tools = {
-    "star": py.star,
-    "bwa": py.bwa
+    "star": py.wrapper.star,
+    "bwa": py.wrapper.bwa
 }
 
 _OPT_KEY_NAME_ALIGNER = "mapper"

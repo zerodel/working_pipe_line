@@ -16,6 +16,10 @@ __author__ = 'zerodel'
 __PATH_DEFAULT_CONFIG = "./default.conf"
 
 
+def throw_out_where_the_default_config_is():
+    return _get_default_config_file_path()
+
+
 def _get_default_config_file_path(file_temp=__PATH_DEFAULT_CONFIG):
     pwd = os.path.dirname(__file__)
     file_tmp = os.path.split(file_temp)[-1]

@@ -4,15 +4,16 @@
 # Readme:
 #
 
-import py.body.default_values
 import py.bwa
 import py.ciri
-import py.ciri_as
 import py.knife
 import py.rsem
 import py.sailfish
 import py.salmon
 import py.star
+
+import py.body.default_values
+import py.wrapper.ciri_as
 import wf_profile_circRNA
 
 __doc__ = '''
@@ -58,14 +59,14 @@ def _add_tool(name, wrapper, description):
     _tool_description[name] = description
 
 
-_add_tool("bwa", py.bwa, "BWA and BWA MEM ")
-_add_tool("ciri", py.ciri, "CIRI : a circular RNA detection tool ")
-_add_tool("ciri_as", py.ciri_as, "CIRI-AS: circular RNA Alternative Splicing Event detection tool")
-_add_tool("knife", py.knife, "KNIFE: a circular RNA detection tool ")
-_add_tool("rsem", py.rsem, "RSEM : a RNA seq quantification tool")
-_add_tool("sailfish", py.sailfish, "Sailfish: a RNA-seq quantification tool based on k-mer")
-_add_tool("salmon", py.salmon, "Salmon: a RNA-seq quantification tool based on fragment ")
-_add_tool("star", py.star, "STAR : a junction sensitive aligner")
+_add_tool("bwa", py.wrapper.bwa, "BWA and BWA MEM ")
+_add_tool("ciri", py.wrapper.ciri, "CIRI : a circular RNA detection tool ")
+_add_tool("ciri_as", py.wrapper.ciri_as, "CIRI-AS: circular RNA Alternative Splicing Event detection tool")
+_add_tool("knife", py.wrapper.knife, "KNIFE: a circular RNA detection tool ")
+_add_tool("rsem", py.wrapper.rsem, "RSEM : a RNA seq quantification tool")
+_add_tool("sailfish", py.wrapper.sailfish, "Sailfish: a RNA-seq quantification tool based on k-mer")
+_add_tool("salmon", py.wrapper.salmon, "Salmon: a RNA-seq quantification tool based on fragment ")
+_add_tool("star", py.wrapper.star, "STAR : a junction sensitive aligner")
 _add_tool("profile_circRNA", wf_profile_circRNA, "home made pipeline for profiling the circRNA ")
 
 if __name__ == "__main__":

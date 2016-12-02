@@ -12,8 +12,8 @@ import py.body.logger
 import py.body.option_check
 import py.body.utilities
 import py.body.worker
-import py.bwa
 import py.file_format.fa
+import py.wrapper.bwa
 
 __doc__ = ''' this is the wrapper of CIRI version 1, it contains one phase: detection
 '''
@@ -332,10 +332,10 @@ def optional_mapping_using_bwa(meta_setting, **kwargs):
     except KeyError:
         raise KeyError("Error@CIRI: no sam output for BWA")
 
-    if not py.bwa.is_path_contain_index(index_bwa):
-        py.bwa.index(para_config={"bwa_bin": bwa_bin, "in_fasta": index_bwa, "-a": "bwtsw"})
+    if not py.wrapper.bwa.is_path_contain_index(index_bwa):
+        py.wrapper.bwa.index(para_config={"bwa_bin": bwa_bin, "in_fasta": index_bwa, "-a": "bwtsw"})
 
-    py.bwa.align(para_config={
+    py.wrapper.bwa.align(para_config={
         "bwa_bin": bwa_bin,
         "read_file": read_file,
         "bwa_index": index_bwa,

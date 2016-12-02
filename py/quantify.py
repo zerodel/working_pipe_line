@@ -3,31 +3,31 @@
 # author : zerodel
 # Readme:
 #
-import argparse
+
+import py.wrapper.rsem
+import py.wrapper.sailfish
 
 import py.body.cli_opts
-import py.rsem
-import py.sailfish
-import py.salmon
 import py.body.config
+import py.wrapper.salmon
 
 __doc__ = '''
 '''
 __author__ = 'zerodel'
 
-
 available_tools = {
-    "sailfish": py.sailfish,
-    "rsem": py.rsem,
-    "salmon": py.salmon
+    "sailfish": py.wrapper.sailfish,
+    "rsem": py.wrapper.rsem,
+    "salmon": py.wrapper.salmon
 }
 
 _OPT_KEY_NAME_QUANTIFIER = "quantifier"
 
+
 def work(whole_config_content=None, quantifier_name=None, inputs=None):
     quantifier = available_tools[quantifier_name]
-    setting_index = dict(whole_config_content[quantifier.INDEX_SECTION])
-    setting_quantify = dict(whole_config_content[quantifier.QUANTIFY_SECTION])
+    setting_index = dict(whole_config_content[quantifier.SECTION_INDEX])
+    setting_quantify = dict(whole_config_content[quantifier.SECTION_QUANTIFY])
 
     index_quantify = _prepare_index(setting_index, quantifier)
     result = _do_quantify(setting_quantify, quantifier, index_quantify, inputs)

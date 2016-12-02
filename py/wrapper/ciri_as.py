@@ -12,19 +12,19 @@ import py.body.cli_opts
 import py.body.logger
 import py.body.option_check
 import py.body.worker
-import py.ciri
+import py.wrapper.ciri
 
 _OPT_CIRI_AS_PATH = "ciri_as_path"
 
-__doc__ = '''this is the wrapper of CIRI-AS
+__doc__ = '''this is the wrapper of CIRI-AS, attention: this wrapper will output all information by default .
 '''
 __author__ = 'zerodel'
 
 SECTION_DETECT = "CIRI_AS"
 
-_ESSENTIAL_ARGUMENTS = ["--sam", "--ciri", "--out", "--ref_dir", "--ref_file", "--anno", "--log"]
+#_ESSENTIAL_ARGUMENTS = ["--sam", "--ciri", "--out", "--ref_dir", "--ref_file", "--anno", "--log"]
 
-_ARGUMENT_ORDER = ["--sam", "--ciri", "--out", "--ref_dir", "--ref_file", "--anno", "--log"]
+_ARGUMENT_ORDER = ["--sam", "--ciri", "--out", "--ref_dir", "--ref_file", "--anno", "--output_all", "--log"]
 
 _logger = py.body.logger.default_logger(SECTION_DETECT)
 
@@ -40,6 +40,7 @@ def _check_opts(opts=None):
     check_your_option.must_have(_OPT_CIRI_AS_PATH, os.path.exists,
                                 FileNotFoundError("Error: can not find CIRI-AS script"),
                                 "path to CIRI-AS script file ")
+
     check_your_option.must_have("--sam", os.path.exists,
                                 FileNotFoundError(
                                     "Error: unable to find CIRI-AS input sam file"),
@@ -53,13 +54,14 @@ def _check_opts(opts=None):
                                 FileNotFoundError("Error@CIRI-AS: incorrect output file for CIRI-AS"),
                                 "output file path for CIRI-AS")
 
-    check_your_option.one_and_only_one(["--ref_dir", "--ref_file"], py.ciri.check_ref,
+    check_your_option.one_and_only_one(["--ref_dir", "--ref_file"], py.wrapper.ciri.check_ref,
                                        FileNotFoundError("Error@CIRI-AS: unable to find ref-file for CIRI-AS"),
                                        "genomic reference file, should be the same as CIRI")
 
     check_your_option.may_need("--anno", os.path.exists,
                                FileNotFoundError("Error@CIRI-AS: incorrect annotation file provide for CIRI-AS"),
                                "genomic annotation , should be the same as CIRI")
+
     check_your_option.may_need("--log", _is_a_suitable_file_path,
                                FileNotFoundError("Error@CIRI-AS: incorrect path for a log file "),
                                "output log file name (optional)")
@@ -78,10 +80,11 @@ def detect(para_config=None, **kwargs):
 
     _logger.debug("ciri-as args: %s" % str(opts_raw))
 
-    opts = copy.copy(opts_raw)
     opt_checker.check(copy.copy(opts_raw))
 
-    cmd_detect = _get_detect_cmd(opts)
+    opts_full_output = copy.copy(opts_raw)
+    opts_full_output["--output_all"] = "yes"  # force to output all
+    cmd_detect = _get_detect_cmd(opts_full_output)
 
     _logger.debug("ciri-as command is : %s" % cmd_detect)
 

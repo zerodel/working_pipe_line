@@ -6,6 +6,8 @@
 import argparse
 import copy
 import os
+import shutil
+
 
 import py.body.cli_opts
 import py.body.config
@@ -13,12 +15,14 @@ import py.body.default_values
 import py.body.logger
 import py.body.option_check
 import py.body.worker
-import py.bsj_gtf
+import py.file_format.bsj_gtf
 import py.file_format.ciri_as_to_gtf
+import py.file_format.ciri_entry
 import py.file_format.fa
-import py.gffread
-import py.sailfish
-import py.salmon
+import py.summary_quant
+import py.wrapper.sailfish
+import py.wrapper.salmon
+import py.wrapper.gffread
 
 _OPT_CIRI_AS_OUTPUT_PREFIX = "--ciri_as_prefix"
 
@@ -26,8 +30,8 @@ _OPT_VALUE_SAILFISH = "sailfish"
 
 _OPT_KEY_QUANTIFIER = "quantifier"
 
-_QUANTIFIER_BACKEND_OF = {"sailfish": py.sailfish,
-                          "salmon": py.salmon}
+_QUANTIFIER_BACKEND_OF = {"sailfish": py.wrapper.sailfish,
+                          "salmon": py.wrapper.salmon}
 
 __doc__ = '''
 '''
@@ -39,7 +43,7 @@ SECTION_PROFILE_CIRCULAR_RNA = "CIRC_PROFILE"
 _logger = py.body.logger.default_logger(SECTION_PROFILE_CIRCULAR_RNA)
 
 
-def _cli_arg_parser():
+def __cli_arg_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument("cfg_file", help="file path to a configuration file of detection job")
     parser.add_argument("-l", "--log_file", help="logging file path", default="")
@@ -100,8 +104,8 @@ option_checker = _option_check_main_interface()
 OPTION_CHECKERS = [option_checker]
 
 # dummy implement
-_seq_extractor = py.gffread
-_gtf_operator = py.bsj_gtf
+_seq_extractor = py.wrapper.gffread
+_gtf_operator = py.file_format.bsj_gtf
 
 
 def main(path_config, forced_refresh=False):
@@ -157,7 +161,7 @@ def main(path_config, forced_refresh=False):
                                                        convert_fun=py.file_format.fa.pad_for_effective_length(
                                                            mean_library_length))
 
-    # 5th , combined those two seq file
+    # 5th , combined those two fasta file
 
     final_refer = os.path.join(output_path, "final.fa")
     py.file_format.fa.do_combine_files(spliced_linear_reference,
@@ -171,7 +175,7 @@ def main(path_config, forced_refresh=False):
     index_parameters = {"--kmerSize": str(k),
                         "--transcripts": final_refer,
                         "--out": path_to_quantifier_index
-                        } if quantifier is py.sailfish else {
+                        } if quantifier is py.wrapper.sailfish else {
         "--kmerLen": str(k),
         "--transcripts": final_refer,
         "--index": path_to_quantifier_index,
@@ -199,15 +203,71 @@ def main(path_config, forced_refresh=False):
 
     quantifier.quantify(para_config=opts_quantifier)
 
+    _summarize_quant_to_gene_level(genomic_annotation=genomic_annotation, circular_gtf=circular_rna_gtf,
+                                   transcript_level_quant=os.path.join(path_to_quantify_result, "quant.sf"),
+                                   gene_level_target_path=os.path.join(path_to_quantify_result, "summarized.quant"))
+
+
+def _summarize_quant_to_gene_level(genomic_annotation, circular_gtf, transcript_level_quant, gene_level_target_path):
+    transcript_of_gene = py.summary_quant.get_mapping_info_from_gtf(circular_gtf,
+                                                                    py.summary_quant.get_mapping_info_from_gtf(
+                                                                        genomic_annotation))
+
+    transcript_of_gene = py.summary_quant.arrange_na_locus(transcript_of_gene)
+
+    quant_transcript_level = py.summary_quant.load_quantify_report(transcript_level_quant)
+
+    genes, tpm_linear, tpm_circular = py.summary_quant.summarize_linear_and_circular_on_gene_level(
+        quant_transcript_level, transcript_of_gene)
+
+    py.summary_quant.export_gene_level_output(gene_level_target_path, genes, tpm_linear, tpm_circular)
+
 
 def _prepare_circular_rna_annotation(circ_detection_report, circ_profile_config, circular_rna_gtf, genomic_annotation):
-    if _OPT_CIRI_AS_OUTPUT_PREFIX not in circ_profile_config:
+    folder_gtf, gtf_base_name = os.path.split(circular_rna_gtf)
+
+    if _OPT_CIRI_AS_OUTPUT_PREFIX in circ_profile_config:
+        circ_as_file_prefix = _catch_one(circ_profile_config, _OPT_CIRI_AS_OUTPUT_PREFIX)
+        isoform_gtf = os.path.join(folder_gtf, "isoform_" + gtf_base_name)
+        bsj_has_isoform = py.file_format.ciri_as_to_gtf.transform_as_path_to_gtf_and_return_bsj_junctions(
+            circ_as_file_prefix, isoform_gtf)
+
+        bed_this = os.path.join(folder_gtf, "detection_raw.bed")
+
+        if not circ_detection_report.endswith(".bed"):
+            py.file_format.ciri_entry.transform_ciri_to_bed(circ_detection_report, bed_this)
+        else:
+            shutil.copy(circ_detection_report, bed_this)
+
+        bed_filtered = os.path.join(folder_gtf, "ambiguous.bed")
+        with open(bed_filtered, "w") as to_bed:
+            with open(bed_this) as from_bed:
+                for line in from_bed:
+                    id_this_line = line.strip().split("\t")[3].strip()
+                    if id_this_line not in bsj_has_isoform:
+                        to_bed.write("%s\n" % line.strip())
+
+        tmp_gtf = os.path.join(folder_gtf, "ambiguous.gtf")
+        _gtf_operator.do_make_gtf_for_circular_prediction_greedy(circular_candidate_regions=bed_filtered,
+                                                                 gff_db=genomic_annotation,
+                                                                 output_gtf_path_name=tmp_gtf)
+
+        combine_two_into_one(circular_rna_gtf, isoform_gtf, tmp_gtf)
+
+    else:
         _gtf_operator.do_make_gtf_for_circular_prediction_greedy(circular_candidate_regions=circ_detection_report,
                                                                  gff_db=genomic_annotation,
                                                                  output_gtf_path_name=circular_rna_gtf)
-    else:
-        circ_as_file_prefix = _catch_one(circ_profile_config, _OPT_CIRI_AS_OUTPUT_PREFIX)
-        py.file_format.ciri_as_to_gtf.transform_as_path_to_gtf(circ_as_file_prefix, circular_rna_gtf)
+
+
+def combine_two_into_one(output, file1, file2):
+    with open(output, "w") as final_combination:
+        with open(file2) as ambiguous_gtf:
+            with open(file1) as file1:
+                for line in ambiguous_gtf:
+                    final_combination.write("%s\n" % line.strip())
+                for line in file1:
+                    final_combination.write("%s\n" % line.strip())
 
 
 def _prepare_linear_transcriptome(genome_fa, genomic_annotation, spliced_linear_reference):
@@ -250,7 +310,7 @@ def _catch_one(opts_dict, *args):
 
 
 if __name__ == "__main__":
-    arg_parser = _cli_arg_parser()
+    arg_parser = __cli_arg_parser()
     args = arg_parser.parse_args()
-    _logger = py.body.logger._set_logger_file(_logger, args.log_file)
+    _logger = py.body.logger.set_logger_file(_logger, args.log_file)
     main(args.cfg_file, forced_refresh=args.force)

@@ -4,21 +4,20 @@
 # Readme:
 #
 
-import os
 import argparse
 import copy
+import os
 
-import py.body.worker
-import py.body.config
+import py.align
 import py.body.cli_opts
+import py.body.config
 import py.body.default_values
 import py.body.logger
-
-import align
-import quantify
+import py.body.worker
 import wf_detect_circRNA
 import wf_profile_circRNA
 import wf_profile_linear
+from py import quantify, align
 
 __doc__ = ''' python ad_hoc_bunch.py result_folder_path sra_files_pat
 '''
@@ -87,7 +86,7 @@ def make_parameters_for_this_job(para_dict, job_id, tap_root):
     fq2 = [f for f in path_to_fq_files if f.endswith("2.fastq") or f.endswith("2.fq")][0]
 
     dict_args["CIRI"]["--seqs"] = " ".join([os.path.join(_put_it_under(_fq_path), fq1),
-                                      os.path.join(_put_it_under(_fq_path), fq2)])
+                                            os.path.join(_put_it_under(_fq_path), fq2)])
 
     dict_args["CIRC_PROFILE"]["-o"] = _put_it_under(_quantify_result_path)
     dict_args["CIRC_PROFILE"]["-k"] = 31
@@ -223,11 +222,12 @@ def _get_tap_root_from_cfg(cfg):
 def _make_arg_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument("--sra", help="path to your sra samples folder", default="")
-    parser.add_argument("--out", help="path to your output path, each sra will have a sub-dir under this path", default="")
+    parser.add_argument("--out", help="path to your output path, each sra will have a sub-dir under this path",
+                        default="")
     parser.add_argument("--config", help="path to your config file", default="")
     parser.add_argument("--work_flow",
                         help="choose your work flow : align , quantify , detection, profile_linear, profile_circRNA",
-                        choices = [x for x in WORKING_FLOWS_OF], default="")
+                        choices=[x for x in WORKING_FLOWS_OF], default="")
 
     return parser
 

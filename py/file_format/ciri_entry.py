@@ -5,10 +5,13 @@
 #
 import os
 
+import py.body.logger
+
 __doc__ = '''
 '''
 __author__ = 'zerodel'
 
+_logger = py.body.logger.default_logger("CIRI_ENTRY")
 
 class CIRIEntry(object):
     def __init__(self, string_line_in_ciri_output_format=""):
@@ -53,35 +56,30 @@ class CIRIEntry(object):
         else:
             chromosome_id = self.chr
 
-        return "\t".join([chromosome_id, self.start, self.end, self.id]).strip()
+        bed_id_showing_gene_host = "%s@%s" % (self.id, self.gene_id)
+        return "\t".join([chromosome_id, self.start, self.end, bed_id_showing_gene_host]).strip()
 
 
-def transform_ciri_to_bed(ciri_output_file, output_bed_file="", isoform_gene_mapping_file=""):
+def transform_ciri_to_bed(ciri_output_file, output_bed_file=""):
     abs_ciri_dir = os.path.abspath(ciri_output_file)
     main_part_ciri_path = os.path.splitext(abs_ciri_dir)[0]
     if not output_bed_file:
         output_bed_file = ".".join([main_part_ciri_path, "bed"])
 
-    if not isoform_gene_mapping_file:
-        isoform_gene_mapping_file = ".".join([main_part_ciri_path, "mapping"])
-
     with open(ciri_output_file) as ciri_file:
         ciri_file.readline()  # file head should be skipped
 
         with open(output_bed_file, "w") as exporter:
-            with open(isoform_gene_mapping_file, "w") as mapping_file:
+
                 for line in ciri_file:
                     ciri_line_entry = CIRIEntry(line.strip())
 
                     new_bed_line = ciri_line_entry.to_dot_bed_string()
-                    mapping_string = export_mapping_of_circular_isoform(ciri_line_entry)
 
-                    if new_bed_line and mapping_string:
+                    if new_bed_line:
                         exporter.write(new_bed_line + "\n")
-                        mapping_file.write(mapping_string + "\n")
                     else:
-                        # todo : leave a warning here ?
-                        pass
+                        _logger.warning("encounter a null entry at %s" % line.strip())
 
 
 def export_mapping_of_circular_isoform(some_ciri_entry):

@@ -126,6 +126,9 @@ class GTFitem(object):
         """ parse a line in seq-file file ,
         only gene id and transcript id will be extracted from attribute string
         """
+        if line_in_gtf.strip().startswith("#"):
+            raise AttributionIncomplete("This line is a comment: %s " % line_in_gtf)
+
         element_gtf = line_in_gtf.strip().split("\t")
 
         gtf_attribute_string = element_gtf.pop()
@@ -214,12 +217,3 @@ class GTFitem(object):
             return "%s;" % attr_rebuild
 
         return attr_rebuild
-
-
-if __name__ == "__main__":
-    import sys
-
-    if len(sys.argv) < 2:
-        print(__doc__)
-    else:
-        pass

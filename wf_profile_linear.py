@@ -5,12 +5,13 @@
 #
 import os.path
 import sys
+
 sys.path.append(os.path.dirname(__file__))
 import py.body.config
 import py.body.worker
 import py.body.default_values
-import align
-import quantify
+import py.align
+from py import quantify, align
 
 __doc__ = '''
 '''
@@ -22,7 +23,8 @@ _OPT_KEY_MAPPER = "mapper"
 
 
 def main(path_config=""):
-    user_config_whole = py.body.config.config(path_config) if path_config else py.body.default_values.load_default_value()
+    user_config_whole = py.body.config.config(
+        path_config) if path_config else py.body.default_values.load_default_value()
 
     aligner_name = get_value_from_GLOBAL_section(user_config_whole, _OPT_KEY_MAPPER)
     quantifier = get_value_from_GLOBAL_section(user_config_whole, _OPT_KEY_QUANTIFIER)
@@ -37,8 +39,10 @@ def get_value_from_GLOBAL_section(user_config_whole, key_name):
     else:
         raise KeyError("Error@config_global_section: {} must be in GLOBAL section".format(key_name))
 
+
 if __name__ == "__main__":
     import sys
+
     if len(sys.argv) < 2:
         main()
     else:

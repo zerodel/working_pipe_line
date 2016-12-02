@@ -6,15 +6,12 @@
 
 import os
 
-
-
 __doc__ = '''
 '''
 __author__ = 'zerodel'
 
+
 def _convert_naive_report(naive_report):
-
-
     res = []
     with open(naive_report) as nr:
         nr.readline()
@@ -29,7 +26,6 @@ def _safe_split_knife_report_file_line(line):
 
 
 def _convert_glm_report(glm_report):
-
     res = []
     with open(glm_report) as nr:
         nr.readline()
@@ -48,6 +44,7 @@ def _process_line(line_in_file, processed_result_list, func_check_positive):
     else:
 
         pass
+
 
 def _is_this_naive_bsj_positive(parts):
     try:
@@ -99,7 +96,6 @@ def _bsj_junction_to_bed(info_str):
         return "\t".join([seq_name, start_point, end_point, name_bsj, "0", strand])
 
 
-
 def extract_bed_from_knife_report_path(output_bed_file_path, path_of_knife_result):
     report_path = os.path.join(path_of_knife_result, "circReads")
     naive_report_folder = os.path.join(report_path, "reports")
@@ -115,4 +111,3 @@ def extract_bed_from_knife_report_path(output_bed_file_path, path_of_knife_resul
     with open(output_bed_file_path, "w") as op:
         for line in all_bed_lines:
             op.write("{}\n".format(line.strip()))
-
