@@ -32,18 +32,3 @@ class sam(object):
 #                 continue
 #             else:
 #                 yield sam(line.strip())
-
-
-part_path = "/Users/zerodel/projects/Pipeline/test/part.sam"
-
-sam = pysam.AlignmentFile(part_path)
-
-a = next(sam)
-
-a.get_cigar_stats()
-
-b = next(sam)
-
-a.get_reference_positions()
-
-
