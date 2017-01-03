@@ -144,7 +144,7 @@ def main(path_config, forced_refresh=False):
 
     # 3rd, extracts circular RNA sequence
     _seq_extractor.do_extract_circular_transcript(gff=circular_rna_gtf,
-                                                  fasta=genome_fa,
+                                                  path_ref_sequence_file=genome_fa,
                                                   output=circ_reference)
 
     # 4th, do operations on circular RNA reference .
@@ -272,7 +272,7 @@ def combine_two_into_one(output, file1, file2):
 
 def _prepare_linear_transcriptome(genome_fa, genomic_annotation, spliced_linear_reference):
     _seq_extractor.do_extract_classic_linear_transcript(gff=genomic_annotation,
-                                                        fasta=genome_fa,
+                                                        path_ref_sequence_file=genome_fa,
                                                         output=spliced_linear_reference)
 
 

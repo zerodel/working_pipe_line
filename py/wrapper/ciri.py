@@ -176,7 +176,7 @@ def check_ref(ref_path):
 
 
 def which_external_aligner(para_config=None, **kwargs):
-    # ciri is bound to bwa aligner, so no need for external aligner
+    # CIRI is bound to bwa aligner, so no need for external aligner
     return ""
 
 

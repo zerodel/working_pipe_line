@@ -6,9 +6,9 @@
 
 import argparse
 
-import py.bwa
-import py.ciri
-import py.knife
+import py.wrapper.bwa
+import py.wrapper.ciri
+import py.wrapper.knife
 
 import py.body.cli_opts
 import py.body.config

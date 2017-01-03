@@ -14,6 +14,8 @@ import py.body.option_check
 import py.body.utilities
 import py.body.worker
 
+_OPT_IS_PAIRED_END = "--paired-end"
+
 _DESC_SAMPLE_NAME = """The name of the sample analyzed.
 All output files are prefixed by this name (e.g., sample_name.genes.results)"""
 
@@ -40,6 +42,11 @@ SECTION_QUANTIFY = "RSEM_QUANTIFY"
 _ESSENTIAL_ARGS_REFERENCE = "{reference_fasta_files} {reference_name}"
 _ESSENTIAL_ARGS_QUANTIFICATION = "{reference_name} {sample_name}"
 _RSEM_REFERENCE_SUFFIX = [".ti", ".grp", ".seq"]
+
+
+_OPT_BAM = "--bam"
+
+_FILE_SUFFIX_BAM = "Aligned.toTranscriptome.out.bam"
 
 
 def confirm_rsem_style_name_folder(rsem_style_folder_prefix):
@@ -90,34 +97,44 @@ def _get_cmd_make_index(updated_para):
 
 def _get_cmd_calculate_expression(options):
     cmd_string_quantify = "{}".format(options.pop("rsem_bin_calculate_expression"))
-    cmd_suffix = "{reference_name} {sample_name}".format(reference_name=options.pop("reference_name"),
-                                                         sample_name=options.pop("sample_name"))
-
     py.body.utilities.check_binary_executable(cmd_string_quantify.strip())
+
+    cmd_suffix_end = "{reference_name} {sample_name}".format(reference_name=options.pop("reference_name"),
+                                                             sample_name=options.pop("sample_name"))
+
     # decide input mode .
     if "upstream_read_file" in options and options["upstream_read_file"]:
         if "downstream_read_file" in options and options["downstream_read_file"]:
-            cmd_suffix = "--paired-end {upstream_read_file} {downstream_read_file} ".format(
+            cmd_specify_input = "--paired-end {upstream_read_file} {downstream_read_file} ".format(
                 upstream_read_file=options.pop("upstream_read_file"),
-                downstream_read_file=options.pop("downstream_read_file")) + cmd_suffix
+                downstream_read_file=options.pop("downstream_read_file"))
 
         else:
-            cmd_suffix = "{upstream_read_file} ".format(
-                upstream_read_file=options.pop("upstream_read_file")) + cmd_suffix
+            cmd_specify_input = "{upstream_read_file} ".format(
+                upstream_read_file=options.pop("upstream_read_file"))
 
     elif "alignment" in options and options["alignment"]:
         mapping_result_path = options.pop("alignment")
-        is_paired_end = "--paired-end" if py.body.utilities.is_paired(mapping_result_path) else ""
-        cmd_suffix = " ".join(["--alignments ", is_paired_end, mapping_result_path, cmd_suffix])
+        is_paired_end = _OPT_IS_PAIRED_END if py.body.utilities.is_paired(mapping_result_path) else ""
+        cmd_specify_input = " ".join(["--alignments ", is_paired_end, mapping_result_path, cmd_suffix_end])
+
+    elif _OPT_BAM in options and options[_OPT_BAM]:
+        bam_format_alignment = options.pop(_OPT_BAM)
+        is_paired_end = _OPT_IS_PAIRED_END  # todo: change this dumb implement into a real detection result
+        cmd_specify_input = " ".join([_OPT_BAM, bam_format_alignment, is_paired_end])
 
     elif "seqs" in options and options["seqs"]:
         seqs = [x for x in options.pop("seqs").strip().split() if x]
-        is_paired_seqs = "--paired-end" if len(seqs) == 2 else ""
-        cmd_suffix = " ".join([is_paired_seqs, seqs])
+        is_paired_seqs = _OPT_IS_PAIRED_END if len(seqs) == 2 else ""
+        cmd_specify_input = is_paired_seqs + " " + " ".join(seqs)
     else:
         raise KeyError("Error : no argument specifying input file for rsem quantification")
 
-    cmd_string_quantify = " ".join([cmd_string_quantify, py.body.cli_opts.all_options(options), cmd_suffix])
+    cmd_string_quantify = " ".join([cmd_string_quantify,
+                                    py.body.cli_opts.all_options(options),
+                                    cmd_specify_input,
+                                    cmd_suffix_end])
+
     return cmd_string_quantify
 
 
@@ -170,9 +187,9 @@ def index(para_config=None, *args, **kwargs):
 def quantify(para_config=None, *args, **kwargs):
     opts_quantify_rsem = py.body.cli_opts.merge_parameters(kwargs, para_config, SECTION_QUANTIFY)
 
-    opt_checker_quantify.check(opts_quantify_rsem)
+    opt_checker_quantify.check(copy.copy(opts_quantify_rsem))
 
-    cmd = _get_cmd_calculate_expression(opts_quantify_rsem)
+    cmd = _get_cmd_calculate_expression(copy.copy(opts_quantify_rsem))
 
     py.body.worker.run(cmd)
 

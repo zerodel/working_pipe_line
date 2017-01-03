@@ -4,7 +4,7 @@
 # Readme:
 #
 
-import Bio.SeqIO as bo
+import Bio.SeqIO as BO
 
 __doc__ = '''
 '''
@@ -16,7 +16,7 @@ FASTQ_FILE_EXTENSION = [".fastq", ".fq"]
 def is_pair_end_fastq_id_identical(fq1_path, fq2_path):
     num_id = 3
     counter = 0
-    fq_entries = zip(bo.parse(fq1_path, "fastq"), bo.parse(fq2_path, "fastq"))
+    fq_entries = zip(BO.parse(fq1_path, "fastq"), BO.parse(fq2_path, "fastq"))
 
     for r1, r2 in fq_entries:
         counter += 1
@@ -32,7 +32,7 @@ def is_pair_end_fastq_id_identical(fq1_path, fq2_path):
 
 
 def get_read_length(fq):
-    fq_parser = bo.parse(fq, "fastq")
+    fq_parser = BO.parse(fq, "fastq")
     one_read_entry = next(fq_parser)
     return len(one_read_entry.seq)
 

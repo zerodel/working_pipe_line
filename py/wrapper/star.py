@@ -94,11 +94,11 @@ def get_index_path(updated_para):
 
 def is_path_contain_index(path):
     if os.path.isdir(path) and os.path.exists(path):
-        for part in os.listdir(path):
-            if part not in _star_index_files:
-                return False
+        dir_contents = os.listdir(path)
+        if dir_contents:
+            return all([os.path.exists(os.path.join(path, p)) for p in dir_contents])
         else:
-            return True
+            return False
     else:
         raise FileNotFoundError("Error: this is not a folder: {}".format(path))
 

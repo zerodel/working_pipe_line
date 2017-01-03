@@ -155,6 +155,8 @@ def parse_ciri_line(line):
     if len(parts) < 4:
         raise KeyError("Error: not right ciri file type")
     isoform_id, chr_name, start, end = parts[:4]
+    gene_id = parts[9]
+    isoform_id = "%s@%s" % (isoform_id, gene_id)
     return isoform_id, chr_name, start, end
 
 
@@ -180,8 +182,8 @@ def get_gff_database(gtf_file):
         if os.path.exists(db_file_path):
             db = gffutils.FeatureDB(db_file_path)
         else:
-            # todo: here lies some trap
-            #  due to difference between versions of .gtf file, binary database building process may be time exhausting
+            ## @WARNING: different version of GTF will make this process time exhausting
+            # todo: need to make a process for "all" version of gtf file
             db = gffutils.create_db(gtf_file, db_file_path)
     elif "db" == file_suffix:
         db = gffutils.FeatureDB(gtf_file)

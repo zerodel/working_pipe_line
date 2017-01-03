@@ -4,13 +4,13 @@
 # Readme:
 #
 
-import py.bwa
-import py.ciri
-import py.knife
-import py.rsem
-import py.sailfish
-import py.salmon
-import py.star
+import py.wrapper.bwa
+import py.wrapper.ciri
+import py.wrapper.knife
+import py.wrapper.rsem
+import py.wrapper.sailfish
+import py.wrapper.salmon
+import py.wrapper.star
 
 import py.body.default_values
 import py.wrapper.ciri_as

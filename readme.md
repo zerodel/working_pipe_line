@@ -1,7 +1,7 @@
-# design pattern #
+# design convention #
 
 ## top-level interface ##
-the name convention of top level script should begin with "wf_*"
+the name convention of top level pipeline/workflow should begin with "wf_*"
 
 ### what should top level interface do ? ###
 it should
@@ -84,12 +84,16 @@ those related files should be provide by aligner module itself.
 
 	output: a dict , which can be accept by ChainMap to make a dict as input of index/align
 
+	when input is None, return {}
+
 7. interpret_seq_files
 
 > function: translate string contains a path or paths of sequencing read file to a dict which is compatible with configure file section
 
 	input: a string contains one or more sequencing reads file path
 	output: a dict , which can be accept by ChainMap to make a dict as input of align function
+
+	if input is None, return {}
 
 
 8. is_map_result_already_exists
@@ -154,6 +158,9 @@ similar with aligners, quantification tools also need index . so the main framew
 	input: a string containing possible index path
 
 	output: a dict , which can be accept by ChainMap to make a dict as input of index/quant
+	return {} if None is given
+
+
 
 7. interpret_seq_files
 
@@ -161,6 +168,7 @@ similar with aligners, quantification tools also need index . so the main framew
 
 	input: a string contains one or more sequencing reads file path
 	output: a dict , which can be accept by ChainMap to make a dict as input of quant function
+	return {} if None is given
 
 
 

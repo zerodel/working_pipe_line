@@ -69,21 +69,30 @@ def interpret_seq_files(input_files):
         else:
             raise TypeError("Error@sailfish: only list and string are allowed in assign sailfish input_files")
     else:
-        raise FileNotFoundError("Error@sailfish: seems that no input file is assigned")
+        _logger.warning("seems that no input file is assigned")
+        return {}
 
 
-def is_path_contain_index(possible_index_path):
-    for part in os.listdir(possible_index_path):
-        if part not in _FILES_IN_INDEX_FOLDER:
-            return False
+def interpret_index_path(index_path):
+    if index_path and os.path.exists(index_path):
+        return {_INDEX: index_path}
     else:
-        return True
+        return {}
+
+
+def is_path_contain_index(supposed_path_to_index):
+    if os.path.isdir(supposed_path_to_index):
+        files_under_index_dir = os.listdir(supposed_path_to_index)
+        if files_under_index_dir:
+            return all([os.path.exists(os.path.join(supposed_path_to_index, p)) for p in files_under_index_dir])
+
+    return False  # false for all other cases
 
 
 def get_cmd_make_index(para_dict):
-    SAILFISH_INDEX_CMD = "{sailfish_bin} index".format(sailfish_bin=para_dict.pop(_SAILFISH_BIN))
-    SAILFISH_INDEX_CMD += " " + py.body.cli_opts.enum_all_opts(para_dict)
-    return SAILFISH_INDEX_CMD
+    cmd_sailfish_index = "{sailfish_bin} index".format(sailfish_bin=para_dict.pop(_SAILFISH_BIN))
+    cmd_sailfish_index += " " + py.body.cli_opts.enum_all_opts(para_dict)
+    return cmd_sailfish_index
 
 
 def _get_cmd_quantify(para_dict):
@@ -162,7 +171,7 @@ def _check_quantify_options(para_dict=None):
 
 
 def _is_legal_lib_type(str_lib_type):
-    return str_lib_type in ["I", "IU", "U"]
+    return str_lib_type.strip('\"\'') in ["I", "IU", "U"]
 
 
 opt_checker_index = _check_index_options()

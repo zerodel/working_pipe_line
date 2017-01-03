@@ -17,6 +17,7 @@ import py.body.worker
 import wf_detect_circRNA
 import wf_profile_circRNA
 import wf_profile_linear
+import wf_reveal_circ_isoform
 from py import quantify, align
 
 __doc__ = ''' python ad_hoc_bunch.py result_folder_path sra_files_pat
@@ -62,7 +63,8 @@ own_cfg = {
 WORKING_FLOWS_OF = {"align": align,
                     "quantify": quantify,
                     "profile_linear": wf_profile_linear,
-                    "detect": wf_detect_circRNA,
+                    "BSJ_detection": wf_detect_circRNA,
+                    "AS_detection": wf_reveal_circ_isoform,
                     "profile_circRNA": wf_profile_circRNA}
 
 JOB_ID_SECTION = "jobs"
@@ -226,7 +228,8 @@ def _make_arg_parser():
                         default="")
     parser.add_argument("--config", help="path to your config file", default="")
     parser.add_argument("--work_flow",
-                        help="choose your work flow : align , quantify , detection, profile_linear, profile_circRNA",
+                        help="choose your work flow : align , quantify , BSJ_detection, AS_detection, profile_linear, "
+                             "profile_circRNA",
                         choices=[x for x in WORKING_FLOWS_OF], default="")
 
     return parser
