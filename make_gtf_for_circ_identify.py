@@ -6,7 +6,7 @@
 
 import os
 import sys
-import py.file_format.bsj_gtf
+import pysrc.file_format.bsj_gtf
 import argparse
 
 __doc__ = ''' make a annotation file for bed file containing circular RNA identification
@@ -37,6 +37,6 @@ if __name__ == "__main__":
         args = args_parser.parse_args()
 
         if check_your_args(args):
-            py.file_format.bsj_gtf.do_make_gtf_for_circular_prediction_greedy(gff_db=args.gtf,
-                                                                              circular_candidate_regions=args.circ,
-                                                                              output_gtf_path_name=args.output)
+            pysrc.file_format.bsj_gtf.do_make_gtf_for_circular_prediction_greedy(gff_db=args.gtf,
+                                                                                 circular_candidate_regions=args.circ,
+                                                                                 output_gtf_path_name=args.output)

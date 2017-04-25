@@ -28,6 +28,7 @@ a controller/checker should be established, and should provide following feature
 
 every module which contains a option_checker should have this constant *OPTION_CHECKERS* , which is a list of opt-checker objects 
 
+
 ### output / logging part ###
 yes , the output file is the logging file, and should use the standard logging module. ... but still undone yet . 
 it is mostly the python logging manual's fault .....
@@ -36,6 +37,27 @@ it is mostly the python logging manual's fault .....
 
 a mechanism for checking opts and print help is needed . 
 
+## QC tools ##
+here, we assume the QC tool is fastqc.
+
+and those qc tool should have following parts:
+
+1. run_qc
+
+> a function/method to invoke the QC pipeline
+
+
+2. parse_qc_result
+
+> a function to parse QC result
+
+3. SECTION_QC_SETTING
+
+> the name of QC setting section in configure file
+
+4. OPTION_CHECKERS
+
+> a list of option check , this will generate the default description string
 
 ## aligner ##
 

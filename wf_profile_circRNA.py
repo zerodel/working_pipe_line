@@ -8,30 +8,31 @@ import copy
 import os
 import shutil
 
+import pysrc.being.linc
+import pysrc.body.cli_opts
+import pysrc.body.config
+import pysrc.body.default_values
+import pysrc.body.logger
+import pysrc.body.option_check
+import pysrc.body.utilities
+import pysrc.body.worker
+import pysrc.file_format.bsj_gtf
+import pysrc.file_format.ciri_as_to_gtf
+import pysrc.file_format.ciri_entry
+import pysrc.file_format.fa
+import pysrc.sub_module.summary_quant
+import pysrc.wrapper.gffread
+import pysrc.wrapper.sailfish
+import pysrc.wrapper.salmon
 
-import py.body.cli_opts
-import py.body.config
-import py.body.default_values
-import py.body.logger
-import py.body.option_check
-import py.body.worker
-import py.file_format.bsj_gtf
-import py.file_format.ciri_as_to_gtf
-import py.file_format.ciri_entry
-import py.file_format.fa
-import py.summary_quant
-import py.wrapper.sailfish
-import py.wrapper.salmon
-import py.wrapper.gffread
-
-_OPT_CIRI_AS_OUTPUT_PREFIX = "--ciri_as_prefix"
+_OPT_CIRI_AS_OUTPUT_PREFIX = "ciri_as_prefix"
 
 _OPT_VALUE_SAILFISH = "sailfish"
 
 _OPT_KEY_QUANTIFIER = "quantifier"
 
-_QUANTIFIER_BACKEND_OF = {"sailfish": py.wrapper.sailfish,
-                          "salmon": py.wrapper.salmon}
+_QUANTIFIER_BACKEND_OF = {"sailfish": pysrc.wrapper.sailfish,
+                          "salmon": pysrc.wrapper.salmon}
 
 __doc__ = '''
 '''
@@ -40,7 +41,7 @@ __author__ = 'zerodel'
 
 SECTION_PROFILE_CIRCULAR_RNA = "CIRC_PROFILE"
 
-_logger = py.body.logger.default_logger(SECTION_PROFILE_CIRCULAR_RNA)
+_logger = pysrc.body.logger.default_logger(SECTION_PROFILE_CIRCULAR_RNA)
 
 
 def __cli_arg_parser():
@@ -52,7 +53,7 @@ def __cli_arg_parser():
 
 
 def _option_check_main_interface(opts=None):
-    oc = py.body.option_check.OptionChecker(opts, name=SECTION_PROFILE_CIRCULAR_RNA)
+    oc = pysrc.body.option_check.OptionChecker(opts, name=SECTION_PROFILE_CIRCULAR_RNA)
 
     oc.must_have(_OPT_KEY_QUANTIFIER, lambda x: x in ["sailfish", "salmon"],
                  KeyError("Error@circular_RNA_profiling: incorrect quantifier back-end"),
@@ -70,7 +71,7 @@ def _option_check_main_interface(opts=None):
                         FileNotFoundError("Error@circular_RNA_profiling: can not find circular report file "),
                         "path to  circRNA detection report to specify circular RNA")
 
-    oc.may_need(_OPT_CIRI_AS_OUTPUT_PREFIX, py.body.cli_opts.is_suitable_path_with_prefix,
+    oc.may_need(_OPT_CIRI_AS_OUTPUT_PREFIX, pysrc.body.cli_opts.is_suitable_path_with_prefix,
                 FileNotFoundError("Error@circular_RNA_profiling: incorrect circular Alternative Splice file prefix"),
                 "path prefix to CIRI-AS report of circular exons")
 
@@ -100,12 +101,21 @@ def _option_check_main_interface(opts=None):
     return oc
 
 
+# assign package-scale global objects
 option_checker = _option_check_main_interface()
 OPTION_CHECKERS = [option_checker]
 
 # dummy implement
-_seq_extractor = py.wrapper.gffread
-_gtf_operator = py.file_format.bsj_gtf
+_seq_extractor = pysrc.wrapper.gffread
+_gtf_operator = pysrc.file_format.bsj_gtf
+
+
+def __determine_kmer_length(obj_circ_profile):
+    if "-k" in obj_circ_profile and obj_circ_profile['-k']:
+        kmer_length = int(obj_circ_profile["-k"])
+    else:
+        kmer_length = 21
+    return kmer_length
 
 
 def main(path_config, forced_refresh=False):
@@ -125,12 +135,12 @@ def main(path_config, forced_refresh=False):
 
     spliced_linear_reference = os.path.join(output_path, "ref_linear.fa")
     circular_rna_gtf = os.path.join(output_path, "circ_only.gtf")
-    circ_reference = os.path.join(output_path, "circ_only.fa")
+    circ_reference_seq = os.path.join(output_path, "circ_only.fa")
 
-    if "-k" in circ_profile_config and circ_profile_config['-k']:
-        k = int(circ_profile_config["-k"])
-    else:
-        k = 21
+    linc_rna_gtf = os.path.join(output_path, "linc_only.gtf")
+    linc_reference_seq = os.path.join(output_path, "linc_only.fa")
+
+    k = __determine_kmer_length(circ_profile_config)
 
     # 1st, extract the linear sequence
     if not os.path.exists(spliced_linear_reference) or forced_refresh:
@@ -143,30 +153,42 @@ def main(path_config, forced_refresh=False):
                                          genomic_annotation)
 
     # 3rd, extracts circular RNA sequence
-    _seq_extractor.do_extract_circular_transcript(gff=circular_rna_gtf,
-                                                  path_ref_sequence_file=genome_fa,
-                                                  output=circ_reference)
+    _seq_extractor.do_extract_non_coding_transcript(gff=circular_rna_gtf,
+                                                    path_ref_sequence_file=genome_fa,
+                                                    output=circ_reference_seq)
 
-    # 4th, do operations on circular RNA reference .
-    # add adapter
-    py.file_format.fa.convert_all_entries_in_fasta(fa_in=circ_reference,
-                                                   fa_out=circ_reference,
-                                                   convert_fun=py.file_format.fa.make_adapter(k))
+    # Wednesday, 5 April 2017: add same procedure for lincRNA
 
+    if not os.path.exists(linc_rna_gtf) or forced_refresh:
+        pysrc.being.linc.prepare_linc_annotation(original_gff=genomic_annotation,
+                                                 target_linc_annotation=linc_rna_gtf)
+
+    if not os.path.exists(linc_reference_seq) or forced_refresh:
+        pysrc.being.linc.prepare_linc_transcriptome_seq(linc_annotation=linc_rna_gtf,
+                                                        genomic_seq=genome_fa,
+                                                        target_fa=linc_reference_seq)
+
+    # 4th, do operations on circular RNA reference .lincRNA are treated as linear mRNA
+    pysrc.file_format.fa.convert_all_entries_in_fasta(fa_in=circ_reference_seq,
+                                                      fa_out=circ_reference_seq,
+                                                      convert_fun=pysrc.file_format.fa.make_adapter(k))
+
+    # decorate sequence , add adapter .
     if "--mll" in circ_profile_config and circ_profile_config[{"--mll"}]:
         mean_library_length = int(circ_profile_config["--mll"])
 
-        py.file_format.fa.convert_all_entries_in_fasta(fa_in=circ_reference,
-                                                       fa_out=circ_reference,
-                                                       convert_fun=py.file_format.fa.pad_for_effective_length(
+        pysrc.file_format.fa.convert_all_entries_in_fasta(fa_in=circ_reference_seq,
+                                                          fa_out=circ_reference_seq,
+                                                          convert_fun=pysrc.file_format.fa.pad_for_effective_length(
                                                            mean_library_length))
 
-    # 5th , combined those two fasta file
-
+    # 5th , combined those fa files
     final_refer = os.path.join(output_path, "final.fa")
-    py.file_format.fa.do_combine_files(spliced_linear_reference,
-                                       circ_reference,
-                                       final_refer)
+    pysrc.body.utilities.do_merge_files(final_refer, spliced_linear_reference, circ_reference_seq, linc_reference_seq)
+
+    # linc RNA is already in original gtf file
+    final_annotation = os.path.join(output_path, "final.gtf")
+    pysrc.body.utilities.do_merge_files(final_annotation, genomic_annotation, circular_rna_gtf)
 
     # 6th , make index for quantifier
 
@@ -175,7 +197,7 @@ def main(path_config, forced_refresh=False):
     index_parameters = {"--kmerSize": str(k),
                         "--transcripts": final_refer,
                         "--out": path_to_quantifier_index
-                        } if quantifier is py.wrapper.sailfish else {
+                        } if quantifier is pysrc.wrapper.sailfish else {
         "--kmerLen": str(k),
         "--transcripts": final_refer,
         "--index": path_to_quantifier_index,
@@ -200,27 +222,13 @@ def main(path_config, forced_refresh=False):
         opts_quantifier["--libType"] = 'U'
 
     opts_quantifier["--output"] = path_to_quantify_result
+    opts_quantifier["--geneMap"] = final_annotation
 
     quantifier.quantify(para_config=opts_quantifier)
 
-    _summarize_quant_to_gene_level(genomic_annotation=genomic_annotation, circular_gtf=circular_rna_gtf,
-                                   transcript_level_quant=os.path.join(path_to_quantify_result, "quant.sf"),
-                                   gene_level_target_path=os.path.join(path_to_quantify_result, "summarized.quant"))
-
-
-def _summarize_quant_to_gene_level(genomic_annotation, circular_gtf, transcript_level_quant, gene_level_target_path):
-    transcript_of_gene = py.summary_quant.get_mapping_info_from_gtf(circular_gtf,
-                                                                    py.summary_quant.get_mapping_info_from_gtf(
-                                                                        genomic_annotation))
-
-    transcript_of_gene = py.summary_quant.arrange_na_locus(transcript_of_gene)
-
-    quant_transcript_level = py.summary_quant.load_quantify_report(transcript_level_quant)
-
-    genes, tpm_linear, tpm_circular = py.summary_quant.summarize_linear_and_circular_on_gene_level(
-        quant_transcript_level, transcript_of_gene)
-
-    py.summary_quant.export_gene_level_output(gene_level_target_path, genes, tpm_linear, tpm_circular)
+    pysrc.sub_module.summary_quant.aggregate_isoform_quantify_result(quant_sf=os.path.join(path_to_quantify_result, "quant.sf"),
+                                                                     summarized_output=os.path.join(path_to_quantify_result, "summarized.quant"),
+                                                                     gtf_annotation=final_annotation)
 
 
 def _prepare_circular_rna_annotation(circ_detection_report, circ_profile_config, circular_rna_gtf, genomic_annotation):
@@ -229,13 +237,15 @@ def _prepare_circular_rna_annotation(circ_detection_report, circ_profile_config,
     if _OPT_CIRI_AS_OUTPUT_PREFIX in circ_profile_config:
         circ_as_file_prefix = _catch_one(circ_profile_config, _OPT_CIRI_AS_OUTPUT_PREFIX)
         isoform_gtf = os.path.join(folder_gtf, "isoform_" + gtf_base_name)
-        bsj_has_isoform = py.file_format.ciri_as_to_gtf.transform_as_path_to_gtf_and_return_bsj_junctions(
+        bsj_has_isoform = pysrc.file_format.ciri_as_to_gtf.transform_as_path_to_gtf_and_return_bsj_junctions(
             circ_as_file_prefix, isoform_gtf)
 
         bed_this = os.path.join(folder_gtf, "detection_raw.bed")
 
         if not circ_detection_report.endswith(".bed"):
-            py.file_format.ciri_entry.transform_ciri_to_bed(circ_detection_report, bed_this)
+            _logger.info(" we treat circRNA identification report as a CIRI output : {file_circ_report}".format(
+                file_circ_report=circ_detection_report))
+            pysrc.file_format.ciri_entry.transform_ciri_to_bed(circ_detection_report, bed_this)
         else:
             shutil.copy(circ_detection_report, bed_this)
 
@@ -251,8 +261,7 @@ def _prepare_circular_rna_annotation(circ_detection_report, circ_profile_config,
         _gtf_operator.do_make_gtf_for_circular_prediction_greedy(circular_candidate_regions=bed_filtered,
                                                                  gff_db=genomic_annotation,
                                                                  output_gtf_path_name=tmp_gtf)
-
-        combine_two_into_one(circular_rna_gtf, isoform_gtf, tmp_gtf)
+        pysrc.body.utilities.do_merge_files(circular_rna_gtf, isoform_gtf, tmp_gtf)
 
     else:
         _gtf_operator.do_make_gtf_for_circular_prediction_greedy(circular_candidate_regions=circ_detection_report,
@@ -260,31 +269,21 @@ def _prepare_circular_rna_annotation(circ_detection_report, circ_profile_config,
                                                                  output_gtf_path_name=circular_rna_gtf)
 
 
-def combine_two_into_one(output, file1, file2):
-    with open(output, "w") as final_combination:
-        with open(file2) as ambiguous_gtf:
-            with open(file1) as file1:
-                for line in ambiguous_gtf:
-                    final_combination.write("%s\n" % line.strip())
-                for line in file1:
-                    final_combination.write("%s\n" % line.strip())
-
-
 def _prepare_linear_transcriptome(genome_fa, genomic_annotation, spliced_linear_reference):
-    _seq_extractor.do_extract_classic_linear_transcript(gff=genomic_annotation,
-                                                        path_ref_sequence_file=genome_fa,
-                                                        output=spliced_linear_reference)
+    _seq_extractor.do_extract_classic_message_transcript(gff=genomic_annotation,
+                                                         path_ref_sequence_file=genome_fa,
+                                                         output=spliced_linear_reference)
 
 
 def _load_to_update_default_options(path_config):
-    user_config = py.body.config.config(path_config) if path_config else py.body.default_values.load_default_value()
+    user_config = pysrc.body.config.config(path_config) if path_config else pysrc.body.default_values.load_default_value()
 
     if SECTION_PROFILE_CIRCULAR_RNA not in user_config:
         raise KeyError(
             "ERROR@Config_file: should have a section with the name :{}".format(SECTION_PROFILE_CIRCULAR_RNA))
 
     circ_profile_config = dict(user_config[SECTION_PROFILE_CIRCULAR_RNA])
-    default_profile = py.body.cli_opts.default_values.load_default_value()
+    default_profile = pysrc.body.cli_opts.default_values.load_default_value()
 
     if SECTION_PROFILE_CIRCULAR_RNA in default_profile:
         default_profile_config = dict(default_profile[SECTION_PROFILE_CIRCULAR_RNA])
@@ -311,6 +310,6 @@ def _catch_one(opts_dict, *args):
 
 if __name__ == "__main__":
     arg_parser = __cli_arg_parser()
-    args = arg_parser.parse_args()
-    _logger = py.body.logger.set_logger_file(_logger, args.log_file)
-    main(args.cfg_file, forced_refresh=args.force)
+    cl_args = arg_parser.parse_args()
+    _logger = pysrc.body.logger.set_logger_file(_logger, cl_args.log_file)
+    main(cl_args.cfg_file, forced_refresh=cl_args.force)

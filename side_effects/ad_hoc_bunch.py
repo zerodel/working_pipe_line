@@ -8,23 +8,21 @@ import argparse
 import copy
 import os
 
-import py.align
-import py.body.cli_opts
-import py.body.config
-import py.body.default_values
-import py.body.logger
-import py.body.worker
+import pysrc.body.cli_opts
+import pysrc.body.config
+import pysrc.body.default_values
+import pysrc.body.logger
+import pysrc.body.worker
+import pysrc.sub_module.align
 import wf_detect_circRNA
 import wf_profile_circRNA
 import wf_profile_linear
 import wf_reveal_circ_isoform
-from py import quantify, align
+from pysrc.sub_module import align, quantify
 
-__doc__ = ''' python ad_hoc_bunch.py result_folder_path sra_files_pat
+__doc__ = ''' python ad_hoc_bunch.pysrc result_folder_path sra_files_pat
 '''
 __author__ = 'zerodel'
-
-# TODO: here, we assume all sra file are pair-end . how about single-end ?
 
 own_cfg = {
     "CIRI": {
@@ -70,7 +68,7 @@ WORKING_FLOWS_OF = {"align": align,
 JOB_ID_SECTION = "jobs"
 WORKING_PATH_SECTION = "working_path"
 
-_logger = py.body.logger.default_logger("BUNCH_FOR_SRA")
+_logger = pysrc.body.logger.default_logger("BUNCH_FOR_SRA")
 
 
 def make_parameters_for_this_job(para_dict, job_id, tap_root):
@@ -115,7 +113,7 @@ def main(folder_of_result_file, folder_of_sra_files, work_flow, cfg_file):
 
     _logger.debug("there are {} samples".format(str(len(sra_ids))))
 
-    temp_dict = own_cfg if not cfg_file else py.body.config.cfg2dict(py.body.config.config(cfg_file))
+    temp_dict = own_cfg if not cfg_file else pysrc.body.config.cfg2dict(pysrc.body.config.config(cfg_file))
 
     for sra_id in sra_ids:
         _logger.debug("staring %s" % str(sra_id))
@@ -145,14 +143,14 @@ def extract_fq(sra_id, up_level_path, sra_root):
     fq_path = os.path.join(up_level_path, _fq_path(sra_id))
     sra_path = _get_sra_file_path(sra_id, sra_root)
 
-    default_setting = py.body.default_values.load_default_value()
+    default_setting = pysrc.body.default_values.load_default_value()
     fastq_dump_bin = default_setting["META"]["fastq_dump_bin"] if "fastq_dump_bin" in default_setting[
         "META"] else "fastq-dump"
 
     if not _is_paired_end_fq_extracted(sra_id, fq_path):
-        py.body.worker.run("{fq_dump_bin} --split-files {sra} -O {fq}".format(fq_dump_bin=fastq_dump_bin,
-                                                                              sra=sra_path,
-                                                                              fq=fq_path))
+        pysrc.body.worker.run("{fq_dump_bin} --split-files {sra} -O {fq}".format(fq_dump_bin=fastq_dump_bin,
+                                                                                 sra=sra_path,
+                                                                                 fq=fq_path))
 
 
 def _is_paired_end_fq_extracted(sra_id, path_fq):
@@ -201,8 +199,8 @@ def _quantify_result_path(sra):
 
 
 def get_sra_id_in_config(cfg):
-    if py.body.config.SECTION_GLOBAL in cfg:
-        job_ids = [x.strip() for x in cfg[py.body.config.SECTION_GLOBAL][JOB_ID_SECTION].strip().split(" ")
+    if pysrc.body.config.SECTION_GLOBAL in cfg:
+        job_ids = [x.strip() for x in cfg[pysrc.body.config.SECTION_GLOBAL][JOB_ID_SECTION].strip().split(" ")
                    if x]
         return job_ids
     else:
@@ -210,9 +208,9 @@ def get_sra_id_in_config(cfg):
 
 
 def _get_tap_root_from_cfg(cfg):
-    if py.body.config.SECTION_GLOBAL in cfg:
+    if pysrc.body.config.SECTION_GLOBAL in cfg:
 
-        part_global = cfg[py.body.config.SECTION_GLOBAL]
+        part_global = cfg[pysrc.body.config.SECTION_GLOBAL]
         if WORKING_PATH_SECTION in part_global:
             return part_global[WORKING_PATH_SECTION]
         else:

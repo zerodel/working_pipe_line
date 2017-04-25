@@ -4,16 +4,17 @@
 # Readme:
 #
 
-import py.wrapper.bwa
-import py.wrapper.ciri
-import py.wrapper.knife
-import py.wrapper.rsem
-import py.wrapper.sailfish
-import py.wrapper.salmon
-import py.wrapper.star
+import pysrc.wrapper.bwa
+import pysrc.wrapper.ciri
+import pysrc.wrapper.knife
+import pysrc.wrapper.rsem
+import pysrc.wrapper.sailfish
+import pysrc.wrapper.salmon
+import pysrc.wrapper.star
+import pysrc.wrapper.fastqc
 
-import py.body.default_values
-import py.wrapper.ciri_as
+import pysrc.body.default_values
+import pysrc.wrapper.ciri_as
 import wf_profile_circRNA
 
 __doc__ = '''
@@ -35,7 +36,7 @@ def show_it(tool_name):
     module_desc = "\n".join(["# %s" % line for line in module_desc.strip().split('\n')])
     print(module_desc)
 
-    default_config = py.body.default_values.load_default_value()
+    default_config = pysrc.body.default_values.load_default_value()
     for checker in wrapper_tool.OPTION_CHECKERS:
         default_this_section = dict(default_config[checker.name]) if checker.name in default_config else {}
         checker.dict_opt = default_this_section
@@ -58,15 +59,15 @@ def _add_tool(name, wrapper, description):
     _tool_wrapper[name] = wrapper
     _tool_description[name] = description
 
-
-_add_tool("bwa", py.wrapper.bwa, "BWA and BWA MEM ")
-_add_tool("ciri", py.wrapper.ciri, "CIRI : a circular RNA detection tool ")
-_add_tool("ciri_as", py.wrapper.ciri_as, "CIRI-AS: circular RNA Alternative Splicing Event detection tool")
-_add_tool("knife", py.wrapper.knife, "KNIFE: a circular RNA detection tool ")
-_add_tool("rsem", py.wrapper.rsem, "RSEM : a RNA seq quantification tool")
-_add_tool("sailfish", py.wrapper.sailfish, "Sailfish: a RNA-seq quantification tool based on k-mer")
-_add_tool("salmon", py.wrapper.salmon, "Salmon: a RNA-seq quantification tool based on fragment ")
-_add_tool("star", py.wrapper.star, "STAR : a junction sensitive aligner")
+_add_tool("fastqc", pysrc.wrapper.fastqc, "fastqc , a QC tool")
+_add_tool("bwa", pysrc.wrapper.bwa, "BWA and BWA MEM ")
+_add_tool("ciri", pysrc.wrapper.ciri, "CIRI : a circular RNA detection tool ")
+_add_tool("ciri_as", pysrc.wrapper.ciri_as, "CIRI-AS: circular RNA Alternative Splicing Event detection tool")
+_add_tool("knife", pysrc.wrapper.knife, "KNIFE: a circular RNA detection tool ")
+_add_tool("rsem", pysrc.wrapper.rsem, "RSEM : a RNA seq quantification tool")
+_add_tool("sailfish", pysrc.wrapper.sailfish, "Sailfish: a RNA-seq quantification tool based on k-mer")
+_add_tool("salmon", pysrc.wrapper.salmon, "Salmon: a RNA-seq quantification tool based on fragment ")
+_add_tool("star", pysrc.wrapper.star, "STAR : a junction sensitive aligner")
 _add_tool("profile_circRNA", wf_profile_circRNA, "home made pipeline for profiling the circRNA ")
 
 if __name__ == "__main__":

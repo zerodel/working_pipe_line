@@ -3,19 +3,13 @@
 # author : zerodel
 # Readme:
 #
-import os.path
-import sys
+import argparse
 
-sys.path.append(os.path.dirname(__file__))
-import py.body.config
-import py.body.worker
-import py.body.default_values
-import py.align
-from py import quantify, align
-
-__doc__ = '''
-'''
-__author__ = 'zerodel'
+import pysrc.body.config
+import pysrc.body.default_values
+import pysrc.body.worker
+import pysrc.sub_module.align
+from pysrc.sub_module import align, quantify
 
 _OPT_KEY_QUANTIFIER = "quantifier"
 
@@ -23,10 +17,16 @@ _OPT_KEY_MAPPER = "mapper"
 
 _QUANTIFIERS_DO_NOT_NEED_EXTERNAL_MAPPER = ["sailfish"]
 
+__doc__ = '''top level workflow for linear RNA profiling,
+associated key: {key_in_global} in [GLOBAL],
+
+'''.format(key_in_global=_OPT_KEY_MAPPER + "/" + _OPT_KEY_QUANTIFIER)
+__author__ = 'zerodel'
+
 
 def main(path_config=""):
-    user_config_whole = py.body.config.config(
-        path_config) if path_config else py.body.default_values.load_default_value()
+    user_config_whole = pysrc.body.config.config(
+        path_config) if path_config else pysrc.body.default_values.load_default_value()
 
     quantifier = get_value_from_GLOBAL_section(user_config_whole, _OPT_KEY_QUANTIFIER)
 
@@ -42,16 +42,20 @@ def _is_this_quantifier_need_external_mapper(name_quantifier):
 
 
 def get_value_from_GLOBAL_section(user_config_whole, key_name):
-    if key_name in user_config_whole[py.body.config.SECTION_GLOBAL]:
-        return user_config_whole[py.body.config.SECTION_GLOBAL][key_name]
+    if key_name in user_config_whole[pysrc.body.config.SECTION_GLOBAL]:
+        return user_config_whole[pysrc.body.config.SECTION_GLOBAL][key_name]
     else:
         raise KeyError("Error@config_global_section: {} must be in GLOBAL section".format(key_name))
 
 
-if __name__ == "__main__":
-    import sys
+def __cli_arg_parser():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("cfg_file", help="file path to a configuration file of isoform detection")
+    parser.add_argument("-l", "--log_file", help="logging file path", default="")
+    return parser
 
-    if len(sys.argv) < 2:
-        main()
-    else:
-        main(sys.argv[-1])
+
+if __name__ == "__main__":
+    arg_parser = __cli_arg_parser()
+    args = arg_parser.parse_args()
+    main(args.cfg_file)

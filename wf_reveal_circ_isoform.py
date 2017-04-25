@@ -6,15 +6,15 @@
 
 import argparse
 
-import py.wrapper.bwa
-import py.wrapper.ciri
-import py.wrapper.knife
+import pysrc.wrapper.bwa
+import pysrc.wrapper.ciri
+import pysrc.wrapper.knife
 
-import py.body.cli_opts
-import py.body.config
-import py.body.default_values
-import py.body.logger
-import py.wrapper.ciri_as
+import pysrc.body.cli_opts
+import pysrc.body.config
+import pysrc.body.default_values
+import pysrc.body.logger
+import pysrc.wrapper.ciri_as
 
 
 __doc__ = ''' top level interface of detecting circular isoform
@@ -22,12 +22,12 @@ __doc__ = ''' top level interface of detecting circular isoform
 __author__ = 'zerodel'
 
 available_tools = {
-    "ciri_as": py.wrapper.ciri_as,
+    "ciri_as": pysrc.wrapper.ciri_as,
 }
 
 WORK_FLOW_NAME = "workflow_circRNA_isoform_detection"
 
-_logger = py.body.logger.default_logger(WORK_FLOW_NAME)
+_logger = pysrc.body.logger.default_logger(WORK_FLOW_NAME)
 
 
 _OPT_KEY_ISOFORM_DETECTOR = "isoform_detector"
@@ -43,9 +43,9 @@ def __cli_arg_parser():
 def main(cfg):
     _logger.debug("configure is a {} , and content is {}".format(type(cfg), str(cfg)))
 
-    user_config = py.body.config.config(cfg) if cfg else py.body.default_values.load_default_value()
+    user_config = pysrc.body.config.config(cfg) if cfg else pysrc.body.default_values.load_default_value()
 
-    detector_name = user_config[py.body.config.SECTION_GLOBAL][_OPT_KEY_ISOFORM_DETECTOR]
+    detector_name = user_config[pysrc.body.config.SECTION_GLOBAL][_OPT_KEY_ISOFORM_DETECTOR]
 
     _logger.debug("using %s as isoform detector " % detector_name)
 
@@ -70,5 +70,5 @@ def _do_detect_circular_isoform(name_of_detector, user_config):
 if __name__ == "__main__":
     arg_parser = __cli_arg_parser()
     args = arg_parser.parse_args()
-    _logger = py.body.logger.set_logger_file(_logger, args.log_file)
+    _logger = pysrc.body.logger.set_logger_file(_logger, args.log_file)
     main(args.cfg_file)

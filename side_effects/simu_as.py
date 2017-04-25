@@ -11,18 +11,19 @@ import random
 
 from collections import namedtuple
 
-import py.file_format.gtf
+import pysrc.body.utilities
+import pysrc.file_format.gtf
 
 import Bio.SeqIO
-import py.wrapper.gffread
-import py.file_format.fa
-import py.body.logger
+import pysrc.wrapper.gffread
+import pysrc.file_format.fa
+import pysrc.body.logger
 
 
 __doc__ = '''decorate circular RNA annotation file with alternative splice events
 now supported: exon skipping
 '''
-__logger = py.body.logger.default_logger("simulation for AS event")
+__logger = pysrc.body.logger.default_logger("simulation for AS event")
 __author__ = 'zerodel'
 
 random.seed(666)
@@ -49,7 +50,7 @@ def load_circular_annotation(circ_gff):
     kv_transcript_gtf_lines = {}
     with open(circ_gff) as load_gtf:
         for line in load_gtf:
-            exon_entry = py.file_format.gtf.GTFitem(line.strip())
+            exon_entry = pysrc.file_format.gtf.GTFitem(line.strip())
             kv_transcript_gtf_lines.setdefault(exon_entry.get_transcript_id(), set()).add(str(exon_entry))
             kv_transcript_gene[exon_entry.get_transcript_id()] = exon_entry.get_gene_id()
 
@@ -61,7 +62,7 @@ def __fabricate_exon_skipping_for_non_na_circular_rna(context_of_transcript_isof
     for rna in [x for x in kv_isoform_gtf_lines.keys()]:
         if not gene_of[rna] == "n/a":
             exons_string_this_rna = kv_isoform_gtf_lines.pop(rna)
-            exons_this_rna = sorted([py.file_format.gtf.GTFitem(x) for x in exons_string_this_rna],
+            exons_this_rna = sorted([pysrc.file_format.gtf.GTFitem(x) for x in exons_string_this_rna],
                                     key=lambda x: x.starts())
 
             if len(exons_this_rna) < 3:
@@ -76,10 +77,10 @@ def __fabricate_exon_skipping_for_non_na_circular_rna(context_of_transcript_isof
             exons_iso_0 = []
             exons_iso_1 = []
             for index_exon, exon in enumerate(exons_this_rna):
-                neo_exon_iso_0 = py.file_format.gtf.GTFitem(str(exon))
+                neo_exon_iso_0 = pysrc.file_format.gtf.GTFitem(str(exon))
                 neo_exon_iso_0.set_transcript_id(iso_id_0)
 
-                neo_exon_iso_1 = py.file_format.gtf.GTFitem(str(exon))
+                neo_exon_iso_1 = pysrc.file_format.gtf.GTFitem(str(exon))
                 neo_exon_iso_1.set_transcript_id(iso_id_1)
 
                 exons_iso_0.append(str(neo_exon_iso_0))
@@ -102,15 +103,15 @@ def prepare_annotation_as_event(path_circular_rna_annotation_file, out_gff):
 
 
 def prepare_seq(linear_gtf, circular_gtf, genomic_seqs, target_folder):
-    extractor = py.wrapper.gffread
+    extractor = pysrc.wrapper.gffread
 
     path_temp_linear_seq = os.path.join(target_folder, "linear.fa")
     path_temp_circular_seq = os.path.join(target_folder, "circular_raw.fa")
 
-    extractor.do_extract_classic_linear_transcript(gff=linear_gtf, path_ref_sequence_file=genomic_seqs,
-                                                   output=path_temp_linear_seq)
-    extractor.do_extract_circular_transcript(gff=circular_gtf, path_ref_sequence_file=genomic_seqs,
-                                             output=path_temp_circular_seq)
+    extractor.do_extract_classic_message_transcript(gff=linear_gtf, path_ref_sequence_file=genomic_seqs,
+                                                    output=path_temp_linear_seq)
+    extractor.do_extract_non_coding_transcript(gff=circular_gtf, path_ref_sequence_file=genomic_seqs,
+                                               output=path_temp_circular_seq)
 
     path_temp_circular_simu = os.path.join(target_folder, "simu_circular.fa")
     path_temp_circular_quant = os.path.join(target_folder, "quant_circular.fa")
@@ -126,9 +127,9 @@ def prepare_seq(linear_gtf, circular_gtf, genomic_seqs, target_folder):
                 fa_quant.write(">%s\n%s\n" % (r.id, seq_quant))
 
     combined_fa_simu = os.path.join(target_folder, "simu.fa")
-    py.file_format.fa.do_combine_files(path_temp_linear_seq, path_temp_circular_simu, combined_fa_simu)
+    pysrc.body.utilities.do_merge_files(combined_fa_simu, path_temp_linear_seq, path_temp_circular_simu)
     combined_fa_quant = os.path.join(target_folder, "quant.fa")
-    py.file_format.fa.do_combine_files(path_temp_linear_seq, path_temp_circular_quant, combined_fa_quant)
+    pysrc.body.utilities.do_merge_files(combined_fa_quant, path_temp_linear_seq, path_temp_circular_quant)
 
     os.remove(path_temp_circular_seq)
     os.remove(path_temp_linear_seq)
@@ -197,9 +198,9 @@ if __name__ == "__main__":
         elif not args.circular_gtf and os.path.exists(args.genomic_seq) and os.path.exists(args.linear_gtf):
             __logger.debug("make a simulation with only linear transcripts")
             tmp_linear_transcriptome = os.path.join(args.target_dir, "linear_transcriptome.fa")
-            py.wrapper.gffread.do_extract_classic_linear_transcript(args.linear_gtf,
-                                                                    path_ref_sequence_file=args.genomic_seq,
-                                                                    output=tmp_linear_transcriptome)
+            pysrc.wrapper.gffread.do_extract_classic_message_transcript(args.linear_gtf,
+                                                                        path_ref_sequence_file=args.genomic_seq,
+                                                                        output=tmp_linear_transcriptome)
             info_linear_simu = make_reads_num_assignment(tmp_linear_transcriptome, int(args.depth))
             dump_setting(info_linear_simu, os.path.join(args.target_dir, "simu.setting"))
 
