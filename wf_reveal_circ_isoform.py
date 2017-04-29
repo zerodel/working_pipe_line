@@ -12,7 +12,6 @@ import pysrc.wrapper.knife
 
 import pysrc.body.cli_opts
 import pysrc.body.config
-import pysrc.body.default_values
 import pysrc.body.logger
 import pysrc.wrapper.ciri_as
 
@@ -43,7 +42,7 @@ def __cli_arg_parser():
 def main(cfg):
     _logger.debug("configure is a {} , and content is {}".format(type(cfg), str(cfg)))
 
-    user_config = pysrc.body.config.config(cfg) if cfg else pysrc.body.default_values.load_default_value()
+    user_config = pysrc.body.config.config(cfg) if cfg else pysrc.body.config.load_default_value()
 
     detector_name = user_config[pysrc.body.config.SECTION_GLOBAL][_OPT_KEY_ISOFORM_DETECTOR]
 

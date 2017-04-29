@@ -8,9 +8,9 @@
 import os.path
 import sys
 
-sys.path.append(os.path.dirname(__file__))
+import pysrc.body.config
 
-import pysrc.body.default_values
+sys.path.append(os.path.dirname(__file__))
 
 __doc__ = ''' this command will give you a copy of default configuration file at given path,
 you can change it with your editor
@@ -24,7 +24,7 @@ if __name__ == "__main__":
         print(__doc__)
     else:
 
-        path_to_config_default = pysrc.body.default_values.throw_out_where_the_default_config_is()
+        path_to_config_default = pysrc.body.config.throw_out_where_the_default_config_is()
         if not os.path.exists(path_to_config_default):
             raise FileNotFoundError("Error: unable to find default config file at {}".format(path_to_config_default))
 

@@ -12,7 +12,7 @@ import pysrc.body.cli_opts
 import pysrc.body.option_check
 import pysrc.body.utilities
 import pysrc.body.worker
-from pysrc.body.cli_opts import transform_input_general
+
 
 __doc__ = ''' this is the wrapper of BWA aligner , it contains two phase: 1. index 2. align
 '''
@@ -71,7 +71,7 @@ def interpret_index_path(given_index_path_prefix):
 
 def interpret_seq_files(input_files):
     if input_files:
-        paths = transform_input_general(input_files)
+        paths = pysrc.body.cli_opts.transform_input_general(input_files)
         return {"read_file": paths}
     else:
         return {}

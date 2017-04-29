@@ -10,9 +10,6 @@ import copy
 
 import zipfile
 
-import pandas as pd
-from pandas import Series, DataFrame
-
 import pysrc.body.worker
 import pysrc.body.logger
 import pysrc.body.cli_opts

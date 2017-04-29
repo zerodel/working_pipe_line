@@ -3,7 +3,7 @@
 # author : zerodel
 # Readme:
 #
-
+import pysrc.body.config
 import pysrc.wrapper.bwa
 import pysrc.wrapper.ciri
 import pysrc.wrapper.knife
@@ -13,9 +13,9 @@ import pysrc.wrapper.salmon
 import pysrc.wrapper.star
 import pysrc.wrapper.fastqc
 
-import pysrc.body.default_values
 import pysrc.wrapper.ciri_as
 import wf_profile_circRNA
+import wf_detect_circRNA
 
 __doc__ = '''
 '''
@@ -36,7 +36,7 @@ def show_it(tool_name):
     module_desc = "\n".join(["# %s" % line for line in module_desc.strip().split('\n')])
     print(module_desc)
 
-    default_config = pysrc.body.default_values.load_default_value()
+    default_config = pysrc.body.config.load_default_value()
     for checker in wrapper_tool.OPTION_CHECKERS:
         default_this_section = dict(default_config[checker.name]) if checker.name in default_config else {}
         checker.dict_opt = default_this_section
@@ -69,6 +69,8 @@ _add_tool("sailfish", pysrc.wrapper.sailfish, "Sailfish: a RNA-seq quantificatio
 _add_tool("salmon", pysrc.wrapper.salmon, "Salmon: a RNA-seq quantification tool based on fragment ")
 _add_tool("star", pysrc.wrapper.star, "STAR : a junction sensitive aligner")
 _add_tool("profile_circRNA", wf_profile_circRNA, "home made pipeline for profiling the circRNA ")
+_add_tool("detect_circRNA", wf_detect_circRNA, "home made pipeline for detecting circRNA")
+
 
 if __name__ == "__main__":
     import sys

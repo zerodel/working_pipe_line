@@ -6,8 +6,8 @@
 import argparse
 import os
 
+import pysrc.body.config
 import pysrc.body.logger
-from pysrc.body import default_values
 
 __doc__ = '''
 '''
@@ -63,7 +63,7 @@ def update_parameters(para_default, para_cli, para_conf):
 
 
 def merge_parameters(kwargs, para_config, config_section):
-    load_setting = default_values.load_default_value()
+    load_setting = pysrc.body.config.load_default_value()
     updated_para = dict(load_setting[config_section]) if config_section in load_setting else {}
 
     if para_config:
@@ -108,3 +108,28 @@ def simple_arg_parser_only_config_option():
     parser.add_argument("config", help="specify the config file for this align job")
 
     return parser
+
+
+def catch_one(opts_dict, *args):
+    for arg in args:
+        if arg in opts_dict:
+            return opts_dict.get(arg)
+    else:
+        raise KeyError("Error: no such key %s in option %s" % ("/".join(args), opts_dict))
+
+
+def extract_one(opts, key, default=""):
+    val = opts.pop(key, default)
+    if key in opts:
+        raise KeyError(
+            "ERROR@OPTION: unable to remove {this_entry} in a dict using dict.pop".format(this_entry=key))
+    return val
+
+
+def extract_entries_from_value_str(tools_str_in_config):
+    str_tools = tools_str_in_config.strip()
+    if "," in str_tools:
+        tz = [x.strip() for x in str_tools.split(",")]
+    else:
+        tz = [x.strip() for x in str_tools.split()]
+    return tz

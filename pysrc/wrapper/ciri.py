@@ -12,8 +12,15 @@ import pysrc.body.logger
 import pysrc.body.option_check
 import pysrc.body.utilities
 import pysrc.body.worker
+import pysrc.file_format.ciri_entry
 import pysrc.file_format.fa
 import pysrc.wrapper.bwa
+
+_OPT_BED_OUTPUT = "bed_out"
+_OPT_FILTER_READS_NUMBER = "filter_junction_reads"
+
+BWA_T_LONGER_60BP = "19"
+BWA_T_SHORT_READS = "15"
 
 __doc__ = ''' this is the wrapper of CIRI version 1, it contains one phase: detection
 '''
@@ -30,52 +37,6 @@ _OPT_REF_DIR_IN_CIRI_1 = "--ref-dir"
 _OPT_REF_FILE_IN_CIRI_1 = "--ref-file"
 
 _ESSENTIAL_ARGUMENTS = [_OPT_INPUT, _OPT_OUTPUT, _OPT_REF_FILE_IN_CIRI_1, _OPT_ANNOTATION]
-
-
-class CIRIEntry(object):
-    def __init__(self, string_line_in_ciri_output_format=""):
-        """ construct an empty ciri entry or from a string.
-        :param string_line_in_ciri_output_format: optional, a single string line in CIRI output file, except file header
-        """
-        if string_line_in_ciri_output_format:
-            self._parse_line(string_line_in_ciri_output_format)
-        else:
-            self.id = ""
-            self.chr = ""
-            self.start = ""
-            self.end = ""
-            self.circRNA_type = ""
-            self.gene_id = ""
-            self.junction_reads = []
-
-    def _parse_line(self, string_ciri):
-        """:param string_ciri: a CIRI output file formatted string, except file header
-        :return :None , set up your CIRIEntry object"""
-        elements = string_ciri.strip().split("\t")
-        self.junction_reads = elements.pop().split(",")
-        self.gene_id = elements.pop()
-        self.circRNA_type = elements.pop()
-        self.id = elements.pop(0)
-        self.chr = elements.pop(0)
-        self.start = elements.pop(0)
-        self.end = elements.pop(0)
-
-    def __str__(self):
-        return 'id:%s\nchr:%s\nstart:%s\nend:%s\ntype:%s\ngene:%s\n' % (
-            self.id, self.chr, self.start, self.end, self.circRNA_type, self.gene_id
-        )
-
-    def to_dot_bed_string(self, remove_chr=False):
-        """transfer this object into a .bed file string
-        :param remove_chr :  boolean, since chr1 in UCSC is just 1 in Ensembl,
-            this option decide whether should "chr" be removed
-        """
-        if remove_chr:
-            chromosome_id = self.chr[3:]
-        else:
-            chromosome_id = self.chr
-
-        return "\t".join([chromosome_id, self.start, self.end, self.id]).strip()
 
 
 def _is_sam_file_path_valid(sam_file):
@@ -117,34 +78,6 @@ def _is_this_path_contains_valid_folder(path):
         return os.path.exists(folder) and os.path.isdir(folder)
     else:
         raise FileNotFoundError("Error: CIRI output should be a file")
-
-
-def to_bed(ciri_opts, output_bed_file="", path_transcript_gene_mapping=""):  # redundancy : ciri_entry .transform to bed
-    ciri_output_file = ciri_opts[_OPT_OUTPUT]
-    abs_ciri_dir = os.path.abspath(ciri_output_file)
-    main_part_ciri_path = os.path.splitext(abs_ciri_dir)[0]
-    if not output_bed_file:
-        output_bed_file = ".".join([main_part_ciri_path, "bed"])
-
-    if not path_transcript_gene_mapping:
-        path_transcript_gene_mapping = ".".join([main_part_ciri_path, "mapping"])
-
-    with open(ciri_output_file) as ciri_file:
-        ciri_file.readline()  # file head should be skipped
-
-        with open(output_bed_file, "w") as exporter:
-            with open(path_transcript_gene_mapping, "w") as mapping_file:
-                for line in ciri_file:
-                    ciri_line_entry = CIRIEntry(line.strip())
-
-                    new_bed_line = ciri_line_entry.to_dot_bed_string()
-                    mapping_string = _export_mapping_of_circular_isoform(ciri_line_entry)
-
-                    if new_bed_line and mapping_string:
-                        exporter.write(new_bed_line + "\n")
-                        mapping_file.write(mapping_string + "\n")
-                    else:
-                        pass
 
 
 def _export_mapping_of_circular_isoform(some_ciri_entry):
@@ -192,44 +125,63 @@ _logger = pysrc.body.logger.default_logger(SECTION_DETECT)
 
 
 def _check_opts(args_dict=None):
-    your_opt_checker = pysrc.body.option_check.OptionChecker(args_dict, name=SECTION_DETECT)
-    your_opt_checker.may_need("bwa_bin", pysrc.body.utilities.which,
-                              FileNotFoundError("ERROR@CIRI: incorrect bwa binary path for bwa"),
-                              "binary file path of BWA aligner")
+    oc = pysrc.body.option_check.OptionChecker(args_dict, name=SECTION_DETECT)
+    oc.may_need("bwa_bin", pysrc.body.utilities.which,
+                FileNotFoundError("ERROR@CIRI: incorrect bwa binary path for bwa"),
+                "binary file path of BWA aligner")
 
-    your_opt_checker.may_need("bwa_index", os.path.exists,
-                              FileNotFoundError("ERROR@CIRI: incorrect bwa index path"),
-                              "index path for BWA aligner")
+    oc.may_need("bwa_index", os.path.exists,
+                FileNotFoundError("ERROR@CIRI: incorrect bwa index path"),
+                "index path for BWA aligner")
 
-    your_opt_checker.must_have("ciri_path", os.path.exists,
-                               FileNotFoundError("Error@CIRI: no ciri script "),
-                               "file path to ciri script")
+    oc.must_have("ciri_path", os.path.exists,
+                 FileNotFoundError("Error@CIRI: no ciri script "),
+                 "file path to ciri script")
 
-    your_opt_checker.may_need("--seqs", pysrc.body.cli_opts.check_if_these_files_exist,
-                              FileNotFoundError("ERROR@CIRI: incorrect reads files provided "),
-                              "sequence reads files need analysis")
+    oc.may_need("--seqs", pysrc.body.cli_opts.check_if_these_files_exist,
+                FileNotFoundError("ERROR@CIRI: incorrect reads files provided "),
+                "sequence reads files need analysis")
 
-    your_opt_checker.may_need(_OPT_ANNOTATION, os.path.exists,
-                              FileNotFoundError("ERROR@CIRI: incorrect annotation file "),
-                              "genomic annotation file")
+    oc.may_need(_OPT_ANNOTATION, os.path.exists,
+                FileNotFoundError("ERROR@CIRI: incorrect annotation file "),
+                "genomic annotation file")
 
-    your_opt_checker.at_most_one(["--thread_num", "-T"], lambda x: x.isdecimal(),
-                                 ValueError("Error@CIRI: thread num should be a number"),
-                                 "thread number.")
+    oc.at_most_one(["--thread_num", "-T"], lambda x: x.isdecimal(),
+                   ValueError("Error@CIRI: thread num should be a number"),
+                   "thread number.")
 
-    your_opt_checker.must_have(_OPT_INPUT, _is_sam_file_path_valid,
-                               FileNotFoundError("Error : unable to find CIRI input file"),
-                               "path to alignments in SAM file type")
+    oc.must_have(_OPT_INPUT, _is_sam_file_path_valid,
+                 FileNotFoundError("Error : unable to find CIRI input file"),
+                 "path to alignments in SAM file type")
 
-    your_opt_checker.must_have(_OPT_OUTPUT, _is_this_path_contains_valid_folder,
-                               FileNotFoundError("Error : incorrect CIRI output file"),
-                               "CIRI detection report file")
+    oc.must_have(_OPT_OUTPUT, _is_this_path_contains_valid_folder,
+                 FileNotFoundError("Error : incorrect CIRI output file"),
+                 "CIRI detection report file")
 
-    your_opt_checker.one_and_only_one([_OPT_REF_DIR_IN_CIRI_1, _OPT_REF_FILE_IN_CIRI_1], check_ref,
-                                      FileNotFoundError("Error: incorrect CIRI ref file"),
-                                      "reference file for CIRI")
+    oc.one_and_only_one([_OPT_REF_DIR_IN_CIRI_1, _OPT_REF_FILE_IN_CIRI_1], check_ref,
+                        FileNotFoundError("Error: incorrect CIRI ref file"),
+                        "reference file for CIRI")
 
-    your_opt_checker.forbid_these_args("--help", "-H")
+    oc.may_need(_OPT_BED_OUTPUT, pysrc.body.utilities.is_path_creatable,
+                FileNotFoundError("Error: unable to create a bed file"),
+                des_str="""summarized report in .bed format. indicating the region of putative circRNA"""
+                )
+
+    def is_suitable_reads_limit(x):
+        try:
+            ix = int(x)
+        except:
+            return False
+        else:
+            return ix >= 0
+
+    oc.may_need(_OPT_FILTER_READS_NUMBER, is_suitable_reads_limit,
+                ValueError("Error: lower limit of junction reads should be a non-negative integer"),
+                des_str="""lower limit of junction reads detected by CIRI , 
+                only bsj have more reads can be taken as a true positive """
+                )
+
+    oc.forbid_these_args("--help", "-H")
 
     def _ciri_input_check(opts):
         no_sam_for_ciri = not _is_a_bwa_sam_file(opts[_OPT_INPUT])
@@ -243,9 +195,9 @@ def _check_opts(args_dict=None):
             if "--seqs" not in opts or not pysrc.body.cli_opts.check_if_these_files_exist(opts["--seqs"]):
                 raise KeyError("ERROR@CIRI@NO_SAM: incorrect sequence reads for BWA alignment ")
 
-    your_opt_checker.custom_condition(_ciri_input_check, "check the options when no sam file for CIRI")
+    oc.custom_condition(_ciri_input_check, "check the options when no sam file for CIRI")
 
-    return your_opt_checker
+    return oc
 
 
 opt_checker = _check_opts()
@@ -253,12 +205,14 @@ opt_checker = _check_opts()
 OPTION_CHECKERS = [opt_checker]
 
 
-def _get_detect_cmd(opts_raw):
+def _get_detect_cmd(opts_raw, pe):
     opts = copy.copy(opts_raw)
     cmd_corp = "perl {ciri_path}".format(ciri_path=opts.pop("ciri_path"))
     cmd_main = " ".join([pysrc.body.cli_opts.drop_key(key, opts) for key in _ESSENTIAL_ARGUMENTS])
     cmd_latter = pysrc.body.cli_opts.enum_all_opts(opts)
-    return " ".join([cmd_corp, cmd_main, cmd_latter])
+    cmd_pe_se = "--PE" if pe else "--SE"
+    cmd_raw = " ".join([cmd_corp, cmd_main, cmd_latter, cmd_pe_se])
+    return cmd_raw
 
 
 def detect(par_dict=None, **kwargs):
@@ -266,11 +220,10 @@ def detect(par_dict=None, **kwargs):
 
     opts = copy.copy(opts_of_index_phase_raw)
 
-    bwa_bin_path = __extract_and_check(opts, entry_name="bwa_bin")
-
-    bwa_index_path = __extract_and_check(opts, entry_name="bwa_index")
-
-    reads = __extract_and_check(opts, "--seqs")
+    bwa_bin_path = pysrc.body.cli_opts.extract_one(opts, key="bwa_bin")
+    bwa_index_path = pysrc.body.cli_opts.extract_one(opts, key="bwa_index")
+    reads = pysrc.body.cli_opts.extract_one(opts, "--seqs")
+    is_pair_end = False if len(pysrc.body.cli_opts.extract_entries_from_value_str(reads)) < 2 else True
 
     if _is_there_alignment_already(opts):
         _logger.debug("already have alignment file at {path_to_align_file}".format(path_to_align_file=opts.get(
@@ -297,20 +250,23 @@ def detect(par_dict=None, **kwargs):
 
     opt_checker.check(copy.copy(opts_of_index_phase_raw))
 
-    cmd_detect = _get_detect_cmd(opts)
+    ciri_report = opts.get(_OPT_OUTPUT)
 
-    _logger.debug("raw command for CIRI is : %s" % cmd_detect)
+    path_bed_out = pysrc.body.cli_opts.extract_one(opts, key=_OPT_BED_OUTPUT,
+                                                   default=os.path.join(os.path.splitext(opts[_OPT_OUTPUT])[0], ".bed"))
+
+    reads_lower_limit = pysrc.body.cli_opts.extract_one(opts, _OPT_FILTER_READS_NUMBER, default=pysrc.file_format.ciri_entry.JUNCTION_READS_LIMIT)
+
+    # start invoking CIRI
+    cmd_detect = _get_detect_cmd(opts, is_pair_end)
+    _logger.info("raw command for CIRI is : %s" % cmd_detect)
     pysrc.body.worker.run(cmd_detect)  # perform the CIRI job here
 
+    _logger.info("CIRI is done, now export the result into 'standard' .bed file")
+    pysrc.file_format.ciri_entry.transform_ciri_to_bed(ciri_output_file=ciri_report,
+                                                       num_read_lower_limit=reads_lower_limit,
+                                                       output_bed_file=path_bed_out)
     return opts_of_index_phase_raw
-
-
-def __extract_and_check(opts, entry_name):
-    bwa_bin_path = opts.pop(entry_name, "")
-    if entry_name in opts:
-        raise KeyError(
-            "ERROR@PYTHON: unable to remove {this_entry} in a dict using dict.pop".format(this_entry=entry_name))
-    return bwa_bin_path
 
 
 def _optional_mapping_using_bwa(meta_setting, **kwargs):
@@ -341,9 +297,25 @@ def _optional_mapping_using_bwa(meta_setting, **kwargs):
         "bwa_bin": bwa_bin,
         "read_file": read_file,
         "bwa_index": index_bwa,
-        "-T": "19",
-        "-t": str(int(pysrc.body.utilities.core_numbers_of_cpu()) - 4),  # cpu core numbers
+        "-T": BWA_T_SHORT_READS,
+        "-t": str(int(pysrc.body.utilities.core_numbers_of_cpu())),  # todo: here we use all the cpu cores...
     }, output=sam)
+
+
+def export_as_bed(par_dict=None, **kwargs):
+    opts_of_index_phase_raw = pysrc.body.cli_opts.merge_parameters(kwargs, par_dict, SECTION_DETECT)
+
+    opts = copy.copy(opts_of_index_phase_raw)
+
+    ciri_report = opts[_OPT_OUTPUT]
+
+    path_bed_out = opts.get(_OPT_BED_OUTPUT, os.path.join(os.path.splitext(opts[_OPT_OUTPUT])[0], ".bed"))
+
+    reads_lower_limit = opts.get(_OPT_FILTER_READS_NUMBER, pysrc.file_format.ciri_entry.JUNCTION_READS_LIMIT)
+
+    pysrc.file_format.ciri_entry.transform_ciri_to_bed(ciri_output_file=ciri_report,
+                                                       num_read_lower_limit=reads_lower_limit,
+                                                       output_bed_file=path_bed_out)
 
 
 if __name__ == "__main__":

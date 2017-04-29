@@ -11,7 +11,6 @@ import shutil
 import pysrc.being.linc
 import pysrc.body.cli_opts
 import pysrc.body.config
-import pysrc.body.default_values
 import pysrc.body.logger
 import pysrc.body.option_check
 import pysrc.body.utilities
@@ -24,6 +23,7 @@ import pysrc.sub_module.summary_quant
 import pysrc.wrapper.gffread
 import pysrc.wrapper.sailfish
 import pysrc.wrapper.salmon
+from pysrc.body.cli_opts import catch_one
 
 _OPT_CIRI_AS_OUTPUT_PREFIX = "ciri_as_prefix"
 
@@ -127,11 +127,11 @@ def main(path_config, forced_refresh=False):
 
     quantifier = _confirm_quantifier(circ_profile_config)
 
-    genomic_annotation = _catch_one(circ_profile_config, "-a", "--annotation")
-    genome_fa = _catch_one(circ_profile_config, "-g", "--genomic_seqs_fasta")
-    circ_detection_report = _catch_one(circ_profile_config, "-c", "--bed", "--ciri_bsj")
+    genomic_annotation = catch_one(circ_profile_config, "-a", "--annotation")
+    genome_fa = catch_one(circ_profile_config, "-g", "--genomic_seqs_fasta")
+    circ_detection_report = catch_one(circ_profile_config, "-c", "--bed", "--ciri_bsj")
 
-    output_path = _catch_one(circ_profile_config, "-o")
+    output_path = catch_one(circ_profile_config, "-o")
 
     spliced_linear_reference = os.path.join(output_path, "ref_linear.fa")
     circular_rna_gtf = os.path.join(output_path, "circ_only.gtf")
@@ -180,7 +180,7 @@ def main(path_config, forced_refresh=False):
         pysrc.file_format.fa.convert_all_entries_in_fasta(fa_in=circ_reference_seq,
                                                           fa_out=circ_reference_seq,
                                                           convert_fun=pysrc.file_format.fa.pad_for_effective_length(
-                                                           mean_library_length))
+                                                              mean_library_length))
 
     # 5th , combined those fa files
     final_refer = os.path.join(output_path, "final.fa")
@@ -226,16 +226,17 @@ def main(path_config, forced_refresh=False):
 
     quantifier.quantify(para_config=opts_quantifier)
 
-    pysrc.sub_module.summary_quant.aggregate_isoform_quantify_result(quant_sf=os.path.join(path_to_quantify_result, "quant.sf"),
-                                                                     summarized_output=os.path.join(path_to_quantify_result, "summarized.quant"),
-                                                                     gtf_annotation=final_annotation)
+    pysrc.sub_module.summary_quant.aggregate_isoform_quantify_result(
+        quant_sf=os.path.join(path_to_quantify_result, "quant.sf"),
+        summarized_output=os.path.join(path_to_quantify_result, "summarized.quant"),
+        gtf_annotation=final_annotation)
 
 
 def _prepare_circular_rna_annotation(circ_detection_report, circ_profile_config, circular_rna_gtf, genomic_annotation):
     folder_gtf, gtf_base_name = os.path.split(circular_rna_gtf)
 
     if _OPT_CIRI_AS_OUTPUT_PREFIX in circ_profile_config:
-        circ_as_file_prefix = _catch_one(circ_profile_config, _OPT_CIRI_AS_OUTPUT_PREFIX)
+        circ_as_file_prefix = catch_one(circ_profile_config, _OPT_CIRI_AS_OUTPUT_PREFIX)
         isoform_gtf = os.path.join(folder_gtf, "isoform_" + gtf_base_name)
         bsj_has_isoform = pysrc.file_format.ciri_as_to_gtf.transform_as_path_to_gtf_and_return_bsj_junctions(
             circ_as_file_prefix, isoform_gtf)
@@ -276,21 +277,22 @@ def _prepare_linear_transcriptome(genome_fa, genomic_annotation, spliced_linear_
 
 
 def _load_to_update_default_options(path_config):
-    user_config = pysrc.body.config.config(path_config) if path_config else pysrc.body.default_values.load_default_value()
+    user_config = pysrc.body.config.config(
+        path_config) if path_config else pysrc.body.config.load_default_value()
 
     if SECTION_PROFILE_CIRCULAR_RNA not in user_config:
         raise KeyError(
             "ERROR@Config_file: should have a section with the name :{}".format(SECTION_PROFILE_CIRCULAR_RNA))
 
-    circ_profile_config = dict(user_config[SECTION_PROFILE_CIRCULAR_RNA])
-    default_profile = pysrc.body.cli_opts.default_values.load_default_value()
+    user_option_section = dict(user_config[SECTION_PROFILE_CIRCULAR_RNA])
+    default_config = pysrc.body.config.load_default_value()
 
-    if SECTION_PROFILE_CIRCULAR_RNA in default_profile:
-        default_profile_config = dict(default_profile[SECTION_PROFILE_CIRCULAR_RNA])
-        default_profile_config.update(circ_profile_config)
-        circ_profile_config = default_profile_config
+    if SECTION_PROFILE_CIRCULAR_RNA in default_config:
+        default_option_section = dict(default_config[SECTION_PROFILE_CIRCULAR_RNA])
+        default_option_section.update(user_option_section)
+        user_option_section = default_option_section
 
-    return circ_profile_config
+    return user_option_section
 
 
 def _confirm_quantifier(circ_profile_config):
@@ -298,14 +300,6 @@ def _confirm_quantifier(circ_profile_config):
     quantifier = _QUANTIFIER_BACKEND_OF[str_quantifier]
     _logger.debug("using %s as quantification backend" % str_quantifier)
     return quantifier
-
-
-def _catch_one(opts_dict, *args):
-    for arg in args:
-        if arg in opts_dict:
-            return opts_dict.get(arg)
-    else:
-        raise KeyError("Error: no such key %s in option %s" % ("/".join(args), opts_dict))
 
 
 if __name__ == "__main__":

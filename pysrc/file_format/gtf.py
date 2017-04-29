@@ -14,15 +14,15 @@ class GTFerr(Exception):
 
 
 class GTFitem_err(GTFerr):
-    '''base class of exception of seq-file item utility
-    '''
+    """base class of exception of seq-file item utility
+    """
     pass
 
 
 class AttributionIncomplete(GTFitem_err):
-    '''
+    """
     this happens when some attribution segment are lost in gtf file entry.
-    '''
+    """
     pass
 
 

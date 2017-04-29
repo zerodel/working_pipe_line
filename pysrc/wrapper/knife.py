@@ -15,6 +15,18 @@ import pysrc.body.utilities
 import pysrc.body.worker
 import pysrc.file_format.fq
 
+_OPT_DECOY_RATIO = "filter_decoy_ratio"
+
+_OPT_NAIVE_PV = "filter_naive_pv"
+
+_OPT_GLM_PV = "filter_glm_pv"
+
+PV_GLM_DEFAULT = 0.9
+
+PV_NAIVE_DEFAULT = 0.9
+
+DECOY_RATIO_DEFAULT = 0.1
+
 _OPT_BASH_BIN = "bash_bin"
 
 _OPT_KNIFE_SCRIPT = "knife_script"
@@ -30,6 +42,8 @@ _OPT_ALIGNMENT_PARENT_DIRECTORY = "alignment_parent_directory"
 _OPT_READ_ID_STYLE = "read_id_style"
 
 _OPT_READ_DIRECTORY = "read_directory"
+
+_OPT_BED_OUTPUT = "bed_out"
 
 _READ_ID_STYLE_SINGE_END_OR_IDENTICAL = "complete"
 
@@ -166,64 +180,84 @@ def _get_mate_files(files_in_reads_folder):
     return mate1_f, mate2_f
 
 
-def _convert_naive_report(naive_report):
-    _logger.debug("converting naive report : %s" % naive_report)
-
-    res = []
-    with open(naive_report) as nr:
-        nr.readline()
-        nr.readline()
-        for line in nr:
-            _process_line(line, res, _is_this_naive_bsj_positive)
-    return res
-
-
-def _safe_split_knife_report_file_line(line):
+def safe_split_knife_report_file_line(line):
     return line.strip("\n").split("\t")
 
 
-def _convert_glm_report(glm_report):
+class ReportChecker(object):
+    def __init__(self, glm_pv=PV_GLM_DEFAULT, naive_pv=PV_NAIVE_DEFAULT, decoy_ratio=DECOY_RATIO_DEFAULT):
+        self.glm_pv_lower_limit = glm_pv
+        self.naive_pv_lower_limit = naive_pv
+        self.decoy_ratio_up_limit = decoy_ratio
+
+    def check_naive_report_line(self, line_in):
+        try:
+            parts = safe_split_knife_report_file_line(line_in)
+            r_circ, r_decoy, r_pv = parts[5], parts[6], parts[7]
+        except:
+            _logger.error("encounter an error at : {}".format(line_in))
+            return False
+
+        try:
+            circ, decoy, pv = int(r_circ), int(r_decoy), float(r_pv)
+        except ValueError:
+            _logger.log(0, "meet a - at %s" % "\t".join(parts))
+            return False
+        return pv >= self.naive_pv_lower_limit and decoy / (circ + 0.0) < self.decoy_ratio_up_limit
+
+    def check_glm_report_line(self, line_in):
+        try:
+            parts = safe_split_knife_report_file_line(line_in)
+            pv = float(parts[2])
+        except:
+            _logger.error("encounter an error at : {}".format(line_in))
+            return False
+        return pv >= self.glm_pv_lower_limit
+
+    @staticmethod
+    def is_this_bsj_str_circular(line_in):
+        try:
+            info_str = safe_split_knife_report_file_line(line_in)[0]
+            seq_name, gene_splice_1, gene_splice_2, junction_type, strand = info_str.strip().split("|")
+        except:
+            return False
+        if junction_type == "reg":
+            return False
+        return True
+
+
+def _convert_naive_report(naive_report, line_checker):
+    _logger.debug("converting naive report : %s" % naive_report)
+
+    with open(naive_report) as nr:
+        bsj_lines = nr.readlines()[2:]
+
+        _logger.debug("there is {num_lines} raw bsj entries in {report}".format(num_lines=len(bsj_lines),
+                                                                                report=naive_report))
+
+        bed_lines = [bsj_line_to_bed(line) for line in bsj_lines
+                     if line_checker.is_this_bsj_str_circular(line) and line_checker.check_naive_report_line(line)]
+
+    return bed_lines
+
+
+def _convert_glm_report(glm_report, line_checker):
     _logger.debug("converting glm report : %s" % glm_report)
-    res = []
     with open(glm_report) as nr:
-        nr.readline()
-        for line in nr:
-            _process_line(line, res, _is_this_glm_bsj_positive)
-    return res
+        bsj_lines = nr.readlines()[1:]
+
+        _logger.debug("there is {num_lines} raw bsj entries in {report}".format(num_lines=len(bsj_lines),
+                                                                                report=glm_report))
+
+        bed_lines = [bsj_line_to_bed(line) for line in bsj_lines
+                     if line_checker.is_this_bsj_str_circular(line) and line_checker.check_glm_report_line(line)]
+
+    return bed_lines
 
 
-def _process_line(line_in_file, processed_result_list, func_check_positive):
-    parts = _safe_split_knife_report_file_line(line_in_file)
-    if parts:
-        if func_check_positive(parts):
-            line_bed = _bsj_junction_to_bed(parts[0])
-            if line_bed:
-                processed_result_list.append(line_bed)
-    else:
-        _logger.debug("an empty line...")
-
-
-def _is_this_naive_bsj_positive(parts):
-    try:
-        r_circ, r_decoy, r_pv = parts[5], parts[6], parts[7]
-
-    except Exception as e:
-        _logger.error(str(parts))
-        raise e
-
-    try:
-        circ, decoy, pv = int(r_circ), int(r_decoy), float(r_pv)
-    except ValueError:
-        _logger.log(0, "meet a - at %s" % "\t".join(parts))
-        return False
-
-    # this is from KNIFE github page
-    return pv >= 0.9 and decoy < circ * 0.1
-
-
-def _is_this_glm_bsj_positive(parts):
-    pv = float(parts[2])
-    return pv >= 0.9  # this is also from KNIFE github page
+def bsj_line_to_bed(line):
+    parts = safe_split_knife_report_file_line(line)
+    return _bsj_junction_to_bed(parts[0])
 
 
 def _bsj_junction_to_bed(info_str):
@@ -253,28 +287,35 @@ def _bsj_junction_to_bed(info_str):
         return "\t".join([seq_name, start_point, end_point, name_bsj, "0", strand])
 
 
-def to_bed(knife_opts_dict, output_bed_file_path, gene_mapping_file=""):
-    # use combined-report as primary source
-    path_of_knife_result = os.path.join(knife_opts_dict[_OPT_ALIGNMENT_PARENT_DIRECTORY],
-                                        knife_opts_dict[_OPT_DATA_SET_NAME])
-
-    extract_bed_from_knife_report_path(output_bed_file_path, path_of_knife_result)
-
-
-def extract_bed_from_knife_report_path(output_bed_file_path, path_of_knife_result):
+def _extract_bed_from_knife_report_path(output_bed_file_path, path_of_knife_result, line_checker):
     report_path = os.path.join(path_of_knife_result, "circReads")
     naive_report_folder = os.path.join(report_path, "reports")
     annotated_junction_report_folder = os.path.join(report_path, "glmReports")
 
-    _logger.debug("naive report path: %s" % naive_report_folder)
-    _logger.debug("glm report path : %s" % annotated_junction_report_folder)
-
     all_bed_lines = []
+    is_naive_report_included = False
+    is_glm_report_included = False
     for report in os.listdir(naive_report_folder):
-        all_bed_lines.extend(_convert_naive_report(os.path.join(naive_report_folder, report)))
+        current_naive_report_file = os.path.join(naive_report_folder, report)
+        all_bed_lines.extend(_convert_naive_report(current_naive_report_file, line_checker))
+        is_naive_report_included = True
+
+    if is_naive_report_included:
+        _logger.debug("naive report path: %s" % naive_report_folder)
+    else:
+        _logger.warning("NO DENOVO REPORT : {}".format(naive_report_folder))
 
     for report in os.listdir(annotated_junction_report_folder):
-        all_bed_lines.extend(_convert_glm_report(os.path.join(annotated_junction_report_folder, report)))
+        current_glm_report_file = os.path.join(annotated_junction_report_folder, report)
+        all_bed_lines.extend(_convert_glm_report(current_glm_report_file, line_checker))
+        is_glm_report_included = True
+
+    if is_glm_report_included:
+        _logger.debug("glm report path : %s" % annotated_junction_report_folder)
+    else:
+        _logger.warning("NO GLM REPORT: {}".format(annotated_junction_report_folder))
+
+    _logger.info("after all , there is {} putative bsj junctions".format(len(all_bed_lines)))
 
     with open(output_bed_file_path, "w") as op:
         for line in all_bed_lines:
@@ -283,52 +324,69 @@ def extract_bed_from_knife_report_path(output_bed_file_path, path_of_knife_resul
 
 def _check_opts(opts=None):
     temp_error = "Error@KNIFE: %s"
-    opt_check = pysrc.body.option_check.OptionChecker(opts, name=SECTION_DETECT)
-    opt_check.must_have(_OPT_BASH_BIN, pysrc.body.utilities.which,
-                        FileNotFoundError(temp_error % "bash binary not found"),
-                        "abs path to bash binary")
+    oc = pysrc.body.option_check.OptionChecker(opts, name=SECTION_DETECT)
+    oc.must_have(_OPT_BASH_BIN, pysrc.body.utilities.which,
+                 FileNotFoundError(temp_error % "bash binary not found"),
+                 "abs path to bash binary")
 
-    opt_check.must_have(_OPT_KNIFE_SCRIPT, os.path.exists,
-                        FileNotFoundError(temp_error % "incorrect KNIFE script path given "),
-                        "knife_script: absolute path to KNIFE executive script")
+    oc.must_have(_OPT_KNIFE_SCRIPT, os.path.exists,
+                 FileNotFoundError(temp_error % "incorrect KNIFE script path given "),
+                 "knife_script: absolute path to KNIFE executive script")
 
-    opt_check.must_have(_OPT_READ_DIRECTORY, _check_valid_read_directory,
-                        FileNotFoundError(temp_error % "incorrect read_directory"),
-                        """absolute path to directory containing fastq files for alignment.
-                        Paired-end reads (PE) must have read1 and read2 in separate files.""")
+    oc.must_have(_OPT_READ_DIRECTORY, _check_valid_read_directory,
+                 FileNotFoundError(temp_error % "incorrect read_directory"),
+                 """absolute path to directory containing fastq files for alignment.
+                 Paired-end reads (PE) must have read1 and read2 in separate files.""")
 
-    opt_check.may_need(_OPT_READ_ID_STYLE, lambda x: x.strip() in ["appended", "complete"],
-                       KeyError(temp_error % "incorrect read_id_type given"),
-                       """read_id_style, complete|appended (use complete for single end).""")
+    oc.may_need(_OPT_READ_ID_STYLE, lambda x: x.strip() in ["appended", "complete"],
+                KeyError(temp_error % "incorrect read_id_type given"),
+                """read_id_style, complete|appended (use complete for single end).""")
 
-    opt_check.must_have(_OPT_ALIGNMENT_PARENT_DIRECTORY, _is_this_folder_existing,
-                        NotADirectoryError(temp_error % "must have a directory for all result "),
-                        """alignment_parent_directory:
-                        absolute path to directory where the dataset analysis output and log files will be stored.
-                        This directory must already exist,
-                        and a directory named dataset_name (see below) will be created under this directory
-                         for all output files.""")
+    oc.must_have(_OPT_ALIGNMENT_PARENT_DIRECTORY, _is_this_folder_existing,
+                 NotADirectoryError(temp_error % "must have a directory for all result "),
+                 """alignment_parent_directory:
+                 absolute path to directory where the dataset analysis output and log files will be stored.
+                 This directory must already exist,
+                 and a directory named dataset_name (see below) will be created under this directory
+                  for all output files.""")
 
-    opt_check.must_have(_OPT_DATA_SET_NAME, lambda x: True,
-                        NotADirectoryError(temp_error % "incorrect dataset_name given"),
-                        """string identifier for this dataset.
-                        A folder of this name will be created under alignment_parent_directory (see above)
-                        and all output for this run will be stored in this directory.""")
+    oc.must_have(_OPT_DATA_SET_NAME, lambda x: True,
+                 NotADirectoryError(temp_error % "incorrect dataset_name given"),
+                 """string identifier for this dataset.
+                 A folder of this name will be created under alignment_parent_directory (see above)
+                 and all output for this run will be stored in this directory.""")
 
-    opt_check.must_have(_OPT_JUNCTION_OVERLAP, lambda x: x.isdecimal(),
-                        KeyError(temp_error % "junction_overlap should be a integer"),
-                        """minimum number of bases in the read
-                        which must be on each side of the junction to consider
-                        that the read is overlapping the junction.
-                         Values that have empirically worked well are 8 for paired-end (PE) reads of length < 70,
-                         13 for longer PE,
-                         and 10 for single-end (SE) reads of length < 70,
-                         15 for longer SE reads.""")
+    oc.must_have(_OPT_JUNCTION_OVERLAP, lambda x: x.isdecimal(),
+                 KeyError(temp_error % "junction_overlap should be a integer"),
+                 """minimum number of bases in the read
+                 which must be on each side of the junction to consider
+                 that the read is overlapping the junction.
+                  Values that have empirically worked well are 8 for paired-end (PE) reads of length < 70,
+                  13 for longer PE,
+                  and 10 for single-end (SE) reads of length < 70,
+                  15 for longer SE reads.""")
 
-    opt_check.may_need(_OPT_INDEX_PATH, _is_this_folder_existing,
-                       NotADirectoryError(temp_error % "incorrect KNIFE pre-fabricated index path"),
-                       """index_path: a path to KNIFE index directory. """)
-    return opt_check
+    oc.may_need(_OPT_INDEX_PATH, _is_this_folder_existing,
+                NotADirectoryError(temp_error % "incorrect KNIFE pre-fabricated index path"),
+                """index_path: a path to KNIFE index directory. """)
+
+    oc.may_need(_OPT_BED_OUTPUT, pysrc.body.utilities.is_path_creatable,
+                FileNotFoundError(temp_error % "can not create a bed file there"),
+                des_str="""path to filtered .bed format report""")
+
+    oc.may_need(_OPT_GLM_PV, pysrc.body.utilities.is_ratio_like,
+                ValueError(temp_error % "glm pv criteria should be a float between 0 and 1"),
+                des_str="""a numeric ratio filters the GLM model BSJ""")
+
+    oc.may_need(_OPT_NAIVE_PV, pysrc.body.utilities.is_ratio_like,
+                ValueError(temp_error % "naive pv criteria should be a float between 0 and 1"),
+                des_str="""a numeric ratio filters the naive BSJ result""")
+
+    oc.may_need(_OPT_DECOY_RATIO, pysrc.body.utilities.is_ratio_like,
+                ValueError(temp_error % "decoy ratio criteria should be a float between 0 and 1"),
+                des_str="""a numeric ratio filters the decoy ratio of naive BSJ result""")
+
+    return oc
 
 
 opt_checker = _check_opts()
@@ -344,10 +402,47 @@ def detect(par_dict=None, **kwargs):
 
     opt_checker.check(copy.copy(opts_of_index_phase_raw))
 
-    cmd_detect = _get_detect_cmd(opts)
+    path_of_knife_result = os.path.join(opts[_OPT_ALIGNMENT_PARENT_DIRECTORY],
+                                        opts[_OPT_DATA_SET_NAME])
 
-    pysrc.body.worker.run(cmd_detect)
+    path_output_bed = pysrc.body.cli_opts.extract_one(opts, _OPT_BED_OUTPUT,
+                                                      default=os.path.join(path_of_knife_result, "main.bed"))
+
+    report_line_checker = ReportChecker(glm_pv=pysrc.body.cli_opts.extract_one(opts, _OPT_GLM_PV, PV_GLM_DEFAULT),
+                                        naive_pv=pysrc.body.cli_opts.extract_one(opts, _OPT_NAIVE_PV, PV_NAIVE_DEFAULT),
+                                        decoy_ratio=pysrc.body.cli_opts.extract_one(opts, _OPT_DECOY_RATIO,
+                                                                                    DECOY_RATIO_DEFAULT))
+
+    # start invoking KNIFE
+    cmd_detect = _get_detect_cmd(opts)
+    pysrc.body.worker.run(cmd_detect)  # KNIFE running here
+
+    # post-detection transforming
+    _extract_bed_from_knife_report_path(output_bed_file_path=path_output_bed,
+                                        path_of_knife_result=path_of_knife_result,
+                                        line_checker=report_line_checker)
     return opts_of_index_phase_raw
+
+
+def export_as_bed(par_dict=None, **kwargs):
+    # todo: should change into a 3rd party function
+    opts_of_index_phase_raw = pysrc.body.cli_opts.merge_parameters(kwargs, par_dict, SECTION_DETECT)
+
+    knife_opts_dict = copy.copy(opts_of_index_phase_raw)
+
+    # use combined-report as primary source
+    path_of_knife_result = os.path.join(knife_opts_dict[_OPT_ALIGNMENT_PARENT_DIRECTORY],
+                                        knife_opts_dict[_OPT_DATA_SET_NAME])
+
+    path_output_bed = knife_opts_dict.get(_OPT_BED_OUTPUT, os.path.join(path_of_knife_result, "main.bed"))
+
+    report_line_checker = ReportChecker(glm_pv=knife_opts_dict[_OPT_GLM_PV],
+                                        naive_pv=knife_opts_dict[_OPT_NAIVE_PV],
+                                        decoy_ratio=knife_opts_dict[_OPT_DECOY_RATIO])
+
+    _extract_bed_from_knife_report_path(output_bed_file_path=path_output_bed,
+                                        path_of_knife_result=path_of_knife_result,
+                                        line_checker=report_line_checker)
 
 
 if __name__ == "__main__":

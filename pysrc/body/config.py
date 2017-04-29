@@ -10,13 +10,20 @@ try:
 except ImportError:
     import ConfigParser as configparser
 
-__doc__ = ''' read .ini format config file ,
+import pysrc.body.logger
+
+
+__doc__ = ''' read .ini format config file,
 '''
 
 __author__ = 'zerodel'
 
 SECTION_META = "META"
 SECTION_GLOBAL = "GLOBAL"
+
+__PATH_DEFAULT_CONFIG = "./default.cfg"
+
+_logger = pysrc.body.logger.default_logger("CONFIG_OPERATION")
 
 
 def _get_parser(is_case_sensitive=True, **kwargs):
@@ -61,10 +68,60 @@ def cfg2dict(config_object):
     return dd
 
 
-if __name__ == "__main__":
-    import sys
+def load_or_update_option_section(cfg, your_section):
+    section_user = None
+    section_default = None
 
-    if len(sys.argv) < 2:
-        print(__doc__)
+    if cfg:
+        user_config = config(cfg)
+        if your_section in user_config:
+            section_user = dict(user_config[your_section])
     else:
+        _logger.warning(
+            "this section: {section} is empty in your configure file: {cfg_file}".format(
+                section=your_section,
+                cfg_file=cfg))
+
+    default_config = load_default_value()
+    if your_section in default_config:
+        section_default = dict(default_config[your_section])
+
+    if section_user and section_default:
+        section_default.update(section_user)
+        _logger.debug("section updated by user config: {}".format(your_section))
+        return section_default
+    else:
+        if section_user:
+            _logger.debug("using only user config: {}".format(your_section))
+            return section_user
+        elif section_default:
+            _logger.debug("using only default config: {}".format(your_section))
+            return section_default
+        else:
+            raise ValueError(
+                "can not find this section :{},  in both default and user config files".format(your_section))
+
+
+def throw_out_where_the_default_config_is():
+    return get_default_config_file_path()
+
+
+def get_default_config_file_path(file_temp=__PATH_DEFAULT_CONFIG):
+    pwd = os.path.dirname(__file__)
+    file_tmp = os.path.split(file_temp)[-1]
+    return os.path.join(pwd, file_tmp)
+
+
+def load_default_value(path_config_file=""):
+    if not path_config_file:
+        path_config_file = get_default_config_file_path(__PATH_DEFAULT_CONFIG)
+
+    config_loaded = single_config(path_config_file)
+
+    if SECTION_GLOBAL in config_loaded and SECTION_META in config_loaded:
         pass
+    else:
+        raise KeyError(
+            "Error@loading_default_setting: must have 'META' and 'GLOBAL' section in {}".format(path_config_file))
+
+    return config_loaded

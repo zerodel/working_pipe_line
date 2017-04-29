@@ -209,13 +209,13 @@ seems this tool do not need a index phrase . or it can be done manually.
     input: sequence_file, path to sequence reads fils in fastq/fa format
     output: a dict(or other container data type), this should contain a path will the report of circular RNA detection
 
-2. to_bed
+2. export_as_bed
 
 > function to transform detection report to .bed file type
 
     input: a dict contains settings for this dectection job. 
     output: 1. a bed file contains the information of circRNA detection.
-            2. optional gene-mapping file  
+            2. optional gene-mapping file
 
 3. SECTION_DETECT:
 
@@ -230,6 +230,23 @@ seems this tool do not need a index phrase . or it can be done manually.
 > function to tell whether a external mapping should be performed before the detecting phase . 
 > return "" if no aligner is needed . 
 > else return the config section name of aligner such as  "BWA", "STAR", etc
+
+6. bed_out
+
+> [optional] file path to bed type result, summarized by module's to_bed function
+
+### bed file format convention ###
+bed file of circRNA are comparable with the default bed file format described in http://www.ensembl.org/info/website/upload/bed.html
+
+meaning of each column are :
+first 3 column are required field.
+1. chrom  : name of chromosome
+2. chromStart : start position of the circRNA
+3. chromEnd : end position of the circRNA
+
+4. name : should follow pattern : rna_name@gene_name_or_id, string after the first @ symbol will be taken as description,
+5. score : number of junction reads detected by detection tools
+
 
 ## DE tool ##
 

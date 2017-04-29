@@ -6,7 +6,7 @@
 import argparse
 
 import pysrc.body.config
-import pysrc.body.default_values
+
 import pysrc.body.worker
 import pysrc.sub_module.align
 from pysrc.sub_module import align, quantify
@@ -26,7 +26,7 @@ __author__ = 'zerodel'
 
 def main(path_config=""):
     user_config_whole = pysrc.body.config.config(
-        path_config) if path_config else pysrc.body.default_values.load_default_value()
+        path_config) if path_config else pysrc.body.config.load_default_value()
 
     quantifier = get_value_from_GLOBAL_section(user_config_whole, _OPT_KEY_QUANTIFIER)
 

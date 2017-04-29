@@ -9,7 +9,6 @@ import argparse
 
 import pysrc.body.config
 import pysrc.body.logger
-import pysrc.body.default_values
 import pysrc.wrapper.knife
 import pysrc.file_format.gtf
 
@@ -87,8 +86,8 @@ def _is_this_combined_glm_bsj_positive(parts):
 
 
 def _is_this_combined_denovo_bsj_positive(parts):
-    ''' junction	orig_circOrLinear	orig_decoyOrAnom	orig_unmapped	orig_pval	swapped_circOrLinear	swapped_decoyOrAnom	swapped_unmapped	swapped_pval	total_reads
-    '''
+    """ junction	orig_circOrLinear	orig_decoyOrAnom	orig_unmapped	orig_pval	swapped_circOrLinear	swapped_decoyOrAnom	swapped_unmapped	swapped_pval	total_reads
+    """
     if not parts:
         return False
 

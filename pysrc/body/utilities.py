@@ -14,6 +14,23 @@ __author__ = 'zerodel'
 
 _logger = pysrc.body.logger.default_logger("UTILITIES")
 
+
+def is_num_like(x):
+    try:
+        float(x)
+    except ValueError:
+        return False
+    else:
+        return True
+
+
+def is_ratio_like(x):
+    if is_num_like(x):
+        if abs(float(x)) <= 1:
+            return True
+    return False
+
+
 # a function copied from  http://stackoverflow.com/questions/377017/test-if-executable-exists-in-python
 def which(program):
     import os
@@ -75,16 +92,18 @@ def is_paired(bam_file):
 
 # a function from http://stackoverflow.com/questions/9532499/check-whether-a-path-is-valid-in-python-without-creating-a-file-at-the-paths-ta
 # and I use a simplified version
+
+def is_path_creatable(pathname: str) -> bool:
+    """`True` if the current user has sufficient permissions to create the passed
+    pathname; `False` otherwise.
+    """
+    # Parent directory of the passed path. If empty, we substitute the current
+    # working directory (CWD) instead.
+    dir_name = os.path.dirname(pathname) or os.getcwd()
+    return os.access(dir_name, os.W_OK)
+
+
 def is_path_exists_or_creatable(path_to_somewhere):
-    def is_path_creatable(pathname: str) -> bool:
-        '''
-        `True` if the current user has sufficient permissions to create the passed
-        pathname; `False` otherwise.
-        '''
-        # Parent directory of the passed path. If empty, we substitute the current
-        # working directory (CWD) instead.
-        dir_name = os.path.dirname(pathname) or os.getcwd()
-        return os.access(dir_name, os.W_OK)
 
     try:
         return os.path.exists(path_to_somewhere) or is_path_creatable(path_to_somewhere)

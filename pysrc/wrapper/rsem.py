@@ -8,7 +8,6 @@ import os
 import os.path
 
 import pysrc.body.cli_opts
-import pysrc.body.default_values
 import pysrc.body.logger
 import pysrc.body.option_check
 import pysrc.body.utilities
