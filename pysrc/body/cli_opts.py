@@ -28,10 +28,13 @@ def option_and_value(key, dict_para):
 
 
 def drop_key(key, dict_para):
-    if dict_para[key]:
-        return "{} {}".format(key, dict_para.pop(key))
+    if key in dict_para:
+        if dict_para[key]:
+            return "{} {}".format(key, dict_para.pop(key))
+        else:
+            return key
     else:
-        return key
+        return ""
 
 
 def cat_options_no_replace(options, opts_value_dict):
@@ -62,6 +65,9 @@ def update_parameters(para_default, para_cli, para_conf):
     return tmp_para
 
 
+# todo: [2017_11_06 15:45] seems this will cause an bug :
+# when your want to update the parameters in a new config file , it wont work as you expected
+# it ignored META and GLOBAL in the newer config file
 def merge_parameters(kwargs, para_config, config_section):
     load_setting = pysrc.body.config.load_default_value()
     updated_para = dict(load_setting[config_section]) if config_section in load_setting else {}

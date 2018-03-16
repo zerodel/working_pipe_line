@@ -77,7 +77,7 @@ def __load_ciri_exon_as_gtf_dict_from(file_path_exon_file):
 
 
 def _make_gtf_entry_exon(start, end, gene_id, circRNA_id, chr, strand):
-    artificial_exon = pysrc.file_format.gtf.GTFitem()
+    artificial_exon = pysrc.file_format.gtf.GTFItem()
     artificial_exon.set_start(int(start))
     artificial_exon.set_end(int(end))
     artificial_exon.set_gene_id(gene_id)

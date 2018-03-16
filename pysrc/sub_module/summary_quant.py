@@ -9,8 +9,14 @@ import pysrc.body.logger
 import pysrc.file_format.ciri_entry
 import pysrc.file_format.gtf
 
-__doc__ = '''
-'''
+CIRCULAR = "circular"
+
+LINC = "linc"
+
+MRNA = "mrna"
+
+__doc__ = """
+"""
 __author__ = 'zerodel'
 
 __COMMENT_CHAR = "#"
@@ -33,9 +39,10 @@ class TranscriptOwnership(object):
         parse_ciri(): parse a ciri output 
         to_text_table_lines(): export transcript information to a text file
     """
+
     def __init__(self, dd_gene_of=None, dd_type_of=None, dd_transcripts_of=None):
         self.gene_of = dd_gene_of if dd_gene_of else {}
-        self.origin_of = dd_type_of if dd_type_of else {}
+        self.type_of = dd_type_of if dd_type_of else {}
         self.transcripts_of = dd_transcripts_of if dd_transcripts_of else {}
         self.default_output_format = "{iso}\t{gene}\t{origin}\n"
 
@@ -47,7 +54,7 @@ class TranscriptOwnership(object):
             _logger.error("try to merge a different type object")
             raise TypeError("can not merge object of different class")
         self.gene_of.update(other.gene_of)
-        self.origin_of.update(other.origin_of)
+        self.type_of.update(other.type_of)
         self.transcripts_of.update(other.transcripts_of)
 
     def parse_gtf(self, gtf_file):
@@ -81,28 +88,54 @@ class TranscriptOwnership(object):
 
         for iso in self.__meaningful_isoforms_sorted():
             gene = self.gene_of.get(iso, "n/a")
-            origin = self.origin_of.get(iso, "n/a")
+            origin = self.type_of.get(iso, "n/a")
             yield format_str.format(**locals())
 
     def __meaningful_isoforms_sorted(self):
         query_gene = [iso for iso in self.gene_of]
-        query_type = [iso for iso in self.origin_of]
+        query_type = [iso for iso in self.type_of]
         query_gene.extend(query_type)
         all_isoforms = list(sorted(set(query_gene)))
         return all_isoforms
 
+    def summarize_to_gene_level(self, transcript_level_quantification):
 
-def _split_junction(junction_str):
-    chr_name, junction_info = junction_str.strip().split(":")
-    junction_start, junction_end = junction_info.strip().split("|")
-    return chr_name, int(junction_start), int(junction_end)
+        unique_types = sorted(list(set((self.type_of[iso] for iso in self.type_of))))
+
+        _logger.debug("the types of transcript are %s" % str(unique_types))
+
+        all_genes = [x for x in self.transcripts_of]
+        if "n/a" not in all_genes:
+            all_genes.append("n/a")
+
+        _logger.debug("there are %d genes in all " % len(all_genes))
+
+        def slot_for_each_gene(list_of_gene):
+            return dict(zip(list_of_gene, [0] * len(list_of_gene)))
+
+#        column_types = dict(zip(unique_types, [slot_for_each_gene(all_genes)] * len(unique_types)))
+        column_types = dict()
+        for iso_type in unique_types:
+            column_types[iso_type] = slot_for_each_gene(all_genes)
+
+        for iso in transcript_level_quantification:
+            type_this_iso = self.type_of.get(iso, "mrna")
+            gene_this_iso = self.gene_of.get(iso, "n/a")
+            quantification_this_iso = float(transcript_level_quantification.get(iso, 0.0))
+
+            # if "linc" == type_this_iso:
+            #     _logger.debug("add a linc : {iso}".format(iso=iso))
+
+            column_types[type_this_iso][gene_this_iso] += quantification_this_iso
+
+        return {"genes": all_genes, "val": column_types, "types": unique_types}
 
 
 class RawRegion(object):
     def __init__(self, str_junction=""):
         if str_junction:
             self.raw_str = str_junction
-            self.chr, self.start, self.end = _split_junction(str_junction.split(".")[0].strip())
+            self.chr, self.start, self.end = self.parse_ciri_junction(str_junction.split(".")[0].strip())
         else:
             self.chr, self.start, self.end, self.raw_str = "", None, None, ""
 
@@ -113,6 +146,12 @@ class RawRegion(object):
         on_the_same_chrome = self.chr == other.chr
         has_overlap = (self.start - other.end) * (self.end - other.start) < 0
         return on_the_same_chrome and has_overlap
+
+    @staticmethod
+    def parse_ciri_junction(junction_str):
+        chr_name, junction_info = junction_str.strip().split(":")
+        junction_start, junction_end = junction_info.strip().split("|")
+        return chr_name, int(junction_start), int(junction_end)
 
 
 def _make_a_cluster(list_of_junction_obj):
@@ -190,29 +229,36 @@ def _load_or_update_transcript_ownership_relation(file_contains_info, func_to_pa
         for single_line in annotation_file_obj:
             if not single_line.strip().startswith(__COMMENT_CHAR):
                 gene_entry, transcript_entry, type_of_transcript = func_to_parse_single_line(single_line)
-
-                dict_type_of_transcript[transcript_entry] = type_of_transcript
-                dict_gene_of_transcript[transcript_entry] = gene_entry
-                dict_transcripts_of_gene.setdefault(gene_entry, set()).add(transcript_entry)
+                if gene_entry and transcript_entry and type_of_transcript:
+                    dict_type_of_transcript[transcript_entry] = type_of_transcript
+                    dict_gene_of_transcript[transcript_entry] = gene_entry
+                    dict_transcripts_of_gene.setdefault(gene_entry, set()).add(transcript_entry)
+                else:
+                    _logger.warning("meet a line not containing all 3 info: %s" % single_line)
 
     return TranscriptOwnership(dd_gene_of=dict_gene_of_transcript, dd_transcripts_of=dict_transcripts_of_gene,
                                dd_type_of=dict_type_of_transcript)
 
 
 def _parse_single_line_as_gtf(single_line):
-    entry = pysrc.file_format.gtf.GTFitem(single_line.strip())
-    gene_id = entry.get_gene_id()
-    transcript_id = entry.get_transcript_id()
-
-    if is_this_id_circular(transcript_id):
-        transcript_type = "circular"
-    elif "lincRNA" == entry.get_source():
-        _logger.debug("found linc: {iso}".format(iso=transcript_id))
-        transcript_type = "linc"
+    try:
+        entry = pysrc.file_format.gtf.GTFItem(single_line.strip())
+        gene_id = entry.get_gene_id()
+        transcript_id = entry.get_transcript_id()
+    except:
+        _logger.warning("in complete gtf line: %s" % single_line)
+        return None, None, None
     else:
-        transcript_type = "mrna"
 
-    return gene_id, transcript_id, transcript_type
+        if is_this_id_circular(transcript_id):
+            transcript_type = CIRCULAR
+        elif "lincRNA" == entry.get_biotype():
+            # logger.debug("found linc: {iso}".format(iso=transcript_id))
+            transcript_type = LINC
+        else:
+            transcript_type = MRNA
+
+        return gene_id, transcript_id, transcript_type
 
 
 def get_mapping_info_from_gtf(gtf_file, obj_ownership=None):
@@ -223,8 +269,8 @@ def get_mapping_info_from_gtf(gtf_file, obj_ownership=None):
 
 def _parse_single_line_ciri(line):
     ciri_this_line = pysrc.file_format.ciri_entry.CIRIEntry(line.strip())
-    gene_id = ciri_this_line.gene_id
-    transcript_id = ciri_this_line.id
+    gene_id = ciri_this_line.obj.gene_id
+    transcript_id = ciri_this_line.obj.circRNA_ID
     return gene_id, transcript_id, "circular"
 
 
@@ -238,72 +284,41 @@ def is_this_id_circular(id_this):
     return str(id_this).startswith("chr") or (":" in str(id_this) and "|" in str(id_this))
 
 
-def is_this_id_lnc(id_this):
-    # dumb implement
-    return False
-
-
-def load_quantify_report(quantify_report_file, key="Name", val="TPM"):
+def load_quantify_report(quantify_report_file, key_name="Name", val_name="TPM"):
     """
     main interface for load sailfish quant.sf report file. 
     
     :param quantify_report_file: path to sailfish quantification file 
-    :param key: which column indicates the transcriptome entry
-    :param val: which column contains the data of interest 
+    :param key_name: which column indicates the transcriptome entry
+    :param val_name: which column contains the data of interest 
     :return: a dict with each line as key:value pairs . 
     """
+
+    from collections import namedtuple
+
     with open(quantify_report_file) as get_quant:
         header_parts = get_quant.readline().strip().split("\t")
-        position_of_id_in_line = header_parts.index(key)
-        position_of_value_in_line = header_parts.index(val)
+        # default file header "Name	Length	EffectiveLength	TPM	NumReads"
+        # we assume that the header line contains valid names
+        EntryISO = namedtuple("EntryISO", field_names=header_parts)
 
         quant_dict = {}
+
         for quant_line in get_quant:
             line_parts = quant_line.strip().split("\t")
-            id_this = line_parts[position_of_id_in_line]
-            value_this = line_parts[position_of_value_in_line]
+            obj_this_line = EntryISO(**dict(zip(header_parts, line_parts)))
+            id_this = getattr(obj_this_line, key_name)
+            value_this = getattr(obj_this_line, val_name)
+
             quant_dict[id_this] = value_this
 
     return quant_dict
 
 
-def summarize_to_gene_level(transcript_level_quantification, obj_iso_ownership):
-    transcripts_of_gene = obj_iso_ownership.transcripts_of
-    type_of_transcript = obj_iso_ownership.type_of
-    gene_of_transcript = obj_iso_ownership.gene_of
-
-    unique_types = sorted(list(set((type_of_transcript[iso] for iso in type_of_transcript))))
-
-    _logger.debug("the types of transcript are %s" % str(unique_types))
-
-    all_genes = [x for x in transcripts_of_gene]
-    if "n/a" not in all_genes:
-        all_genes.append("n/a")
-
-    _logger.debug("there are %d genes in all " % len(all_genes))
-
-    def slot_for_each_gene(list_of_gene):
-        return dict(zip(list_of_gene, [0] * len(list_of_gene)))
-
-    column_types = dict(zip(unique_types, [slot_for_each_gene(all_genes) for x in unique_types]))
-
-    for iso in transcript_level_quantification:
-        type_this_iso = type_of_transcript.get(iso, "mrna")
-        gene_this_iso = gene_of_transcript.get(iso, "n/a")
-        quantification_this_iso = float(transcript_level_quantification.get(iso, 0.0))
-
-        if "linc" == type_this_iso:
-            _logger.debug("add a linc : {iso}".format(iso=iso))
-
-        column_types[type_this_iso][gene_this_iso] += quantification_this_iso
-
-    return {"genes": all_genes, "val": column_types, "types": unique_types}
-
-
 def dump_summarized_result(summarized_dd, output_path):
     """
     write summarize_* function result into text files 
-    :param summarized_dd: output of some summarize_* function
+    :param summarized_dd: output of some summarize_* function, should have three members: genes, val, types, 
     :param output_path: path to specify the tab-delimit file. 
     """
     genes = summarized_dd["genes"]
@@ -350,7 +365,7 @@ def aggregate_isoform_quantify_result(quant_sf, summarized_output, gtf_annotatio
 
     quantify_of_transcript_level = load_quantify_report(quant_sf)
 
-    df_2d_res = summarize_to_gene_level(quantify_of_transcript_level, info_iso)
+    df_2d_res = info_iso.summarize_to_gene_level(quantify_of_transcript_level)
 
     _logger.debug("dump those data to %s" % summarized_output)
 

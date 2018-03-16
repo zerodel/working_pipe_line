@@ -8,14 +8,15 @@ import multiprocessing
 import os
 
 import gffutils
-
-from pysrc.file_format.gtf import GTFitem
+import pysrc.file_format.ciri_entry
+import pysrc.file_format.gtf
 
 __doc__ = '''
 '''
 __author__ = 'zerodel'
 
 OVERLAP_WINDOW_WIDTH = 3
+valid_feature_type_circ = ["processed_transcript", "protein_coding"]
 
 
 class PredictedCircularRegion(object):
@@ -53,7 +54,7 @@ class PredictedCircularRegion(object):
 
     @staticmethod
     def generate_exon_for_circular_isoform(host_seqname, start, end, host_gene_id, host_tran_id, strand="+", frame="."):
-        artificial_exon = GTFitem()
+        artificial_exon = pysrc.file_format.gtf.GTFItem()
         artificial_exon.set_start(int(start))
         artificial_exon.set_end(int(end))
         artificial_exon.set_gene_id(host_gene_id)
@@ -65,12 +66,20 @@ class PredictedCircularRegion(object):
         artificial_exon.set_frame(frame)
         return artificial_exon
 
+    @staticmethod
+    def guess_feature_type(feature):
+        if feature.source in valid_feature_type_circ:
+            return feature.source
+        else:
+            return feature.attributes.get("gene_biotype", ["protein_coding"])[0]
+
     def arrange_exons_the_naive_way(self, db):
-        exons_raw = list(set([(exon.seqid, exon.source, exon.start, exon.end, exon.strand, exon.frame)
-                              for exon in db.region(seqid=self.seqid,
-                                                    start=int(self.start),
-                                                    end=int(self.end),
-                                                    featuretype="exon")]))
+        exons_raw = list(set(
+            [(exon.seqid, self.guess_feature_type(exon), exon.start, exon.end, exon.strand, exon.frame)
+             for exon in db.region(seqid=self.seqid,
+                                   start=int(self.start),
+                                   end=int(self.end),
+                                   featuretype="exon")]))
 
         exon_filtered = []  # start filter exon objects
         for exon in exons_raw:
@@ -79,7 +88,7 @@ class PredictedCircularRegion(object):
             if exon_seqid == 'chrM':
                 continue
 
-            if exon_source not in ["processed_transcript", "protein_coding"]:
+            if exon_source not in valid_feature_type_circ:
                 continue
 
             if exon_start < self.start - OVERLAP_WINDOW_WIDTH:
@@ -90,7 +99,7 @@ class PredictedCircularRegion(object):
 
             exon_filtered.append((exon_seqid, exon_source, exon_start, exon_end, exon_strand.strip(), exon_frame))
 
-        exon_filtered = sorted(exon_filtered, key=lambda x: x[2])
+        exon_filtered = sorted(exon_filtered, key=lambda exon_str: exon_str[2])
 
         artificial_exons = []
 
@@ -129,7 +138,7 @@ class PredictedCircularRegion(object):
 
     @staticmethod
     def simplify_this_feature(feature_from_gffutils_db, new_source="", new_transcript_id=""):
-        artificial_exon = GTFitem(str(feature_from_gffutils_db))
+        artificial_exon = pysrc.file_format.gtf.GTFItem(str(feature_from_gffutils_db))
         formal_gene_id = artificial_exon.get_gene_id()
         formal_trans_id = artificial_exon.get_transcript_id()
         artificial_exon.init_null_attribute()
@@ -153,13 +162,8 @@ def parse_bed_line(line):
 
 
 def parse_ciri_line(line):
-    parts = line.strip().split("\t")
-    if len(parts) < 4:
-        raise KeyError("Error: not right ciri file type")
-    isoform_id, chr_name, start, end = parts[:4]
-    gene_id = parts[9]
-    isoform_id = "%s@%s" % (isoform_id, gene_id)
-    return isoform_id, chr_name, start, end
+    entry_ciri = pysrc.file_format.ciri_entry.CIRIEntry(line)
+    return entry_ciri.id_show_host, entry_ciri.obj.chr, entry_ciri.obj.circRNA_start, entry_ciri.obj.circRNA_end
 
 
 def parse_ciri_as_region(ciri_output):
@@ -177,9 +181,9 @@ def parse_bed_as_region(bed_output_no_header):
 
 def get_gff_database(gtf_file):
     path_main, file_part = os.path.split(gtf_file)
-    file_body_name, file_suffix = file_part.split(".")
+    file_body_name, file_suffix = os.path.splitext(file_part)
 
-    if "gtf" == file_suffix:
+    if ".gtf" == file_suffix:
         db_file_path = os.path.join(path_main, ".".join([file_body_name, "db"]))
         if os.path.exists(db_file_path):
             db = gffutils.FeatureDB(db_file_path)
@@ -187,10 +191,10 @@ def get_gff_database(gtf_file):
             # @WARNING: different version of GTF will make this process time exhausting
             # todo: need to make a process for "all" version of gtf file
             db = gffutils.create_db(gtf_file, db_file_path)
-    elif "db" == file_suffix:
+    elif ".db" == file_suffix:
         db = gffutils.FeatureDB(gtf_file)
     else:
-        raise NameError
+        raise FileNotFoundError("Can not Get the right gffutils database file")
     return db
 
 

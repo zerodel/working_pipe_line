@@ -4,6 +4,7 @@
 # Readme:
 #
 import os
+import collections
 
 import pysrc.body.logger
 
@@ -15,55 +16,78 @@ __author__ = 'zerodel'
 
 _logger = pysrc.body.logger.default_logger("CIRI_ENTRY")
 
+HEADER_v1 = """circRNA_ID	chr	circRNA_start	circRNA_end	#junction_reads	SM_MS_SMS	#non_junction_reads	junction_reads_ratio	circRNA_type	gene_id	junction_reads_ID"""
+
+HEADER_v2 = """circRNA_ID	chr	circRNA_start	circRNA_end	#junction_reads	SM_MS_SMS	#non_junction_reads	junction_reads_ratio	circRNA_type	gene_id	strand	junction_reads_ID
+"""
+
+slots_v1 = [x.strip("#") for x in HEADER_v1.split()]
+
+
+# CIRI1 = collections.namedtuple("CIRI1", slots_v1)
+
+class CIRI1(object):
+    def __init__(self, dict_ciri1):
+        self.__dict__.update(dict_ciri1)
+
+
+slots_v2 = [x.strip("#") for x in HEADER_v2.split()]
+
+
+# CIRI2 = collections.namedtuple("CIRI2", slots_v2)
+# todo: still need tweaking .
+class CIRI2(object):
+    def __init__(self, dict_input):
+        self.__dict__.update(dict_input)
+
 
 class CIRIEntry(object):
-    def __init__(self, string_line_in_ciri_output_format=""):
+    def __init__(self, str_line):
         """ construct an empty ciri entry or from a string.
-        :param string_line_in_ciri_output_format: optional, a single string line in CIRI output file, except file header
+        currently , we assume the line only follows HEADER_v1 or HEADER_v2 
+        
         """
-        if string_line_in_ciri_output_format:
-            self._parse_line(string_line_in_ciri_output_format)
+        if str_line:
+            line_parts = str_line.strip().split("\t")
+            if len(line_parts) == len(slots_v1):  # v1
+                # self.obj = CIRI1(**dict(zip(slots_v1, line_parts)))
+                self.obj = CIRI1(dict(zip(slots_v1, line_parts)))
+            elif len(line_parts) == len(slots_v2):  # v2
+                # self.obj = CIRI2(**dict(zip(slots_v2, line_parts)))
+                self.obj = CIRI2(dict(zip(slots_v2, line_parts)))
+            else:
+                raise ValueError("Error: wrong CIRI format in : {}".format(line_parts[0]))
         else:
-            self.id = ""
-            self.chr = ""
-            self.start = ""
-            self.end = ""
-            self.circRNA_type = ""
-            self.gene_id = ""
-            self.junction_reads = []
+            raise ValueError("Error: empty line ")
 
-    def _parse_line(self, string_ciri):
-        """:param string_ciri: a CIRI output file formatted string, except file header
-        :return :None , set up your CIRIEntry object"""
-        elements = string_ciri.strip().split("\t")
-        self.junction_reads = elements.pop().split(",")
-        self.gene_id = elements.pop()
-        self.circRNA_type = elements.pop()
-        self.id = elements.pop(0)
-        self.chr = elements.pop(0)
-        self.start = elements.pop(0)
-        self.end = elements.pop(0)
+        # error prone:  can not set namedtuple attributes
+        if self.obj.gene_id.strip().startswith("inter"):
+            self.obj.gene_id = "n/a"
 
-    def filter_by_junction_reads(self, num_reads_lower_limit):
-        return len(self.junction_reads) >= num_reads_lower_limit
+        self.obj.gene_id = self.obj.gene_id.strip(",")  # try to fix the tailed coma .
 
-    def __str__(self):
-        return 'id:%s\nchr:%s\nstart:%s\nend:%s\ntype:%s\ngene:%s\n' % (
-            self.id, self.chr, self.start, self.end, self.circRNA_type, self.gene_id
-        )
+        if "," in self.obj.gene_id:
+            _logger.debug("{circ} has multiple host : {host}, pick one ".format(circ=self.obj.circRNA_ID,
+                                                                                host=self.obj.gene_id))
+            # here to pick the first gene id as the only gene id
+            self.obj.gene_id = self.obj.gene_id.split(",")[0].strip(",")
 
-    def to_dot_bed_string(self, remove_chr=False):
+        self.id_show_host = "%s@%s" % (self.obj.circRNA_ID, self.obj.gene_id)
+
+    def filter_by_junction_reads(self, num_reads_lower_limit=JUNCTION_READS_LIMIT):
+        return int(self.obj.junction_reads) >= num_reads_lower_limit
+
+    def to_bed_string(self):
         """transfer this object into a .bed file string
-        :param remove_chr :  boolean, since chr1 in UCSC is just 1 in Ensembl,
-            this option decide whether should "chr" be removed
         """
-        if remove_chr:
-            chromosome_id = self.chr[3:]
-        else:
-            chromosome_id = self.chr
+        entry = self.obj
+        strand = "0"
+        if isinstance(entry, CIRI2):
+            strand = entry.strand
 
-        bed_id_showing_gene_host = "%s@%s" % (self.id, self.gene_id)
-        return "\t".join([chromosome_id, self.start, self.end, bed_id_showing_gene_host]).strip()
+        return "\t".join(
+            [entry.chr, entry.circRNA_start, entry.circRNA_end, self.id_show_host, entry.junction_reads,
+             strand]).strip()
 
 
 def transform_ciri_to_bed(ciri_output_file, num_read_lower_limit=JUNCTION_READS_LIMIT, output_bed_file=""):
@@ -86,14 +110,7 @@ def transform_ciri_to_bed(ciri_output_file, num_read_lower_limit=JUNCTION_READS_
                 ciri_line_entry = CIRIEntry(line.strip())
 
                 if ciri_line_entry.filter_by_junction_reads(num_read_lower_limit):
-                    new_bed_line = ciri_line_entry.to_dot_bed_string()
+                    new_bed_line = ciri_line_entry.to_bed_string()
                     exporter.write(new_bed_line + "\n")
                 else:
                     _logger.warning("encounter a dis-qualified entry at %s" % str(ciri_line_entry))
-
-
-def export_mapping_of_circular_isoform(some_ciri_entry):
-    if some_ciri_entry.id and some_ciri_entry.gene_id:
-        return "\t".join([some_ciri_entry.id, some_ciri_entry.gene_id])
-    else:
-        return ""

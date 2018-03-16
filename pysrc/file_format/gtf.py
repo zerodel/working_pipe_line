@@ -3,23 +3,24 @@
 # author : zerodel
 # Readme:
 #
+GENE_BIOTYPE = "gene_biotype"
 
-__doc__ = '''
+__doc__ = '''this module fits the GFF2 format , not GFF3
 '''
 __author__ = 'zerodel'
 
 
-class GTFerr(Exception):
+class GTFErr(Exception):
     pass
 
 
-class GTFitem_err(GTFerr):
+class GTFItemErr(GTFErr):
     """base class of exception of seq-file item utility
     """
     pass
 
 
-class AttributionIncomplete(GTFitem_err):
+class AttributionIncomplete(GTFItemErr):
     """
     this happens when some attribution segment are lost in gtf file entry.
     """
@@ -34,13 +35,13 @@ class NoTranscriptIDInGTF(AttributionIncomplete):
     pass
 
 
-class NoAttributeStringInGTF(GTFitem_err):
+class NoAttributeStringInGTF(GTFItemErr):
     pass
 
 
-class GTFitem(object):
+class GTFItem(object):
     """
-    read single line of .seqfile file , and construct items ,
+    read single line of .gtf file , and construct items ,
     """
     sampleAttribute = r'gene_id transcript_id exon_number gene_biotype gene_name p_id protein_id transcript_name tss_id'
 
@@ -50,20 +51,21 @@ class GTFitem(object):
         """
         Constructor
         """
-
-        if not line_in_gtf:  # the "null" condition
-            self._seqname = ""
-            self._source = ""
-            self._feature = ''
-            self._start = -1
-            self._end = -1
-            self._score = '.'
-            self._strand = "+"
-            self._frame = "."
+        if line_in_gtf:
+            self._parse_line(line_in_gtf)
+        else:  # the "null" condition
+            self.__init_elements()
             self.init_null_attribute()
 
-        else:  # have content in the given gtf-file line
-            self._parse_line(line_in_gtf)
+    def __init_elements(self):
+        self._seqname = ""
+        self._source = ""
+        self._feature = ''
+        self._start = -1
+        self._end = -1
+        self._score = '.'
+        self._strand = "+"
+        self._frame = "."
 
     def seqname(self):
         return self._seqname
@@ -122,33 +124,54 @@ class GTFitem(object):
     def get_frame(self):
         return self._frame
 
+    def get_biotype(self):
+        return self._attributes.get(GENE_BIOTYPE, "")
+
     def _parse_line(self, line_in_gtf):
         """ parse a line in seq-file file ,
         only gene id and transcript id will be extracted from attribute string
         """
         if line_in_gtf.strip().startswith("#"):
+            self.init_null_attribute()
+            self._attributes = None
             raise AttributionIncomplete("This line is a comment: %s " % line_in_gtf)
+        else:
+            gtf_line_parts = line_in_gtf.strip().split("\t")
 
-        element_gtf = line_in_gtf.strip().split("\t")
+            try:
 
-        gtf_attribute_string = element_gtf.pop()
-        try:
-            self._check_attribute_string(gtf_attribute_string)
-        except Exception as e:
-            raise e
+                self._seqname, self._source, self._feature, self._start, self._end, self._score, self._strand, self._frame = gtf_line_parts[:8]
+                self._start = int(self._start)
+                self._end = int(self._end)
 
-        self._seqname = element_gtf.pop(0)
-        self._source = element_gtf.pop(0)
-        self._feature = element_gtf.pop(0)
-        self._start = int(element_gtf.pop(0))
-        self._end = int(element_gtf.pop(0))
-        self._score = element_gtf.pop(0)
-        self._strand = element_gtf.pop(0)
-        self._frame = element_gtf.pop(0)
-        self._attributes = self.attribute2dict(gtf_attribute_string)
+            except IndexError as e:
+                raise e
+
+            try:
+                #self._check_attribute_string(gtf_line_parts[-1])
+                self._attributes = self.attribute2dict(gtf_line_parts[-1])
+            except Exception as e:
+                raise e
 
     @staticmethod
     def _check_attribute_string(gtf_attribute):
+        #  todo: this is only for GFF2
+
+        # gff2 has
+        #         CDS
+        # exon
+        # start_codon
+        # stop_codon
+        # gff 3 CDS
+        # exon
+        # five_prime_utr
+        # gene
+        # Selenocysteine
+        # start_codon
+        # stop_codon
+        # three_prime_utr
+        # transcript
+
         if not gtf_attribute:
             # if nothing in attribute string
             raise NoAttributeStringInGTF
@@ -223,7 +246,35 @@ def filter_gff_by_source(gff, bio_type):
     res = []
     with open(gff) as obj_gff:
         for line in obj_gff:
-            this_entry = GTFitem(line.strip())
-            if bio_type == this_entry.get_source():
-                res.append(line)
+            try:
+                this_entry = GTFItem(line.strip())
+            except AttributionIncomplete:
+                continue
+            else:
+                if bio_type == this_entry.get_biotype():
+                    res.append(line)
     return res
+
+
+gene_biotype_vals = """antisense
+lincRNA
+miRNA
+misc_RNA
+Mt_rRNA
+Mt_tRNA
+processed_pseudogene
+processed_transcript
+protein_coding
+pseudogene
+ribozyme
+rRNA
+scaRNA
+sense_intronic
+snoRNA
+snRNA
+sRNA
+TEC
+transcribed_processed_pseudogene
+transcribed_unprocessed_pseudogene
+unprocessed_pseudogene
+"""

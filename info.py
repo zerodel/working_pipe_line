@@ -59,6 +59,7 @@ def _add_tool(name, wrapper, description):
     _tool_wrapper[name] = wrapper
     _tool_description[name] = description
 
+
 _add_tool("fastqc", pysrc.wrapper.fastqc, "fastqc , a QC tool")
 _add_tool("bwa", pysrc.wrapper.bwa, "BWA and BWA MEM ")
 _add_tool("ciri", pysrc.wrapper.ciri, "CIRI : a circular RNA detection tool ")
@@ -70,7 +71,6 @@ _add_tool("salmon", pysrc.wrapper.salmon, "Salmon: a RNA-seq quantification tool
 _add_tool("star", pysrc.wrapper.star, "STAR : a junction sensitive aligner")
 _add_tool("profile_circRNA", wf_profile_circRNA, "home made pipeline for profiling the circRNA ")
 _add_tool("detect_circRNA", wf_detect_circRNA, "home made pipeline for detecting circRNA")
-
 
 if __name__ == "__main__":
     import sys

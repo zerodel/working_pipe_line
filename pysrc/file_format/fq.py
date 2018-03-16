@@ -32,8 +32,10 @@ def is_pair_end_fastq_id_identical(fq1_path, fq2_path):
 
 
 def get_read_length(fq):
+    # here we assume all reads in a single fastq file shares the same length .
     fq_parser = Bo.parse(fq, "fastq")
     one_read_entry = next(fq_parser)
+    fq_parser.close()
     return len(one_read_entry.seq)
 
 

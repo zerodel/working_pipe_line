@@ -32,7 +32,7 @@ def load_mapping_info_from_gtf(gtf_in):
     _logger.debug("starting loading {gtf}".format(gtf=gtf_in))
     with open(gtf_in) as gtf:
         for line in gtf:
-            some_entry = pysrc.file_format.gtf.GTFitem(line.strip())
+            some_entry = pysrc.file_format.gtf.GTFItem(line.strip())
             attr_this = some_entry.get_attribute()
             if "gene_name" in attr_this and "gene_id" in attr_this:
                 mapping[attr_this.get("gene_name")] = attr_this.get("gene_id")

@@ -6,7 +6,6 @@
 import os
 
 import pysrc.body.logger
-from pysrc.file_format.fa import _logger
 
 __doc__ = ''' utilities
 '''
@@ -126,7 +125,7 @@ def do_merge_files(file_output, *args):
             else:
                 with open(file_name) as read1:
                     _logger.info("now adding file: {origin} -> {target} ".format(origin=file_name,
-                                                                                  target=file_output))
+                                                                                 target=file_output))
                     line_count = 0
                     for line in read1:
                         output_lines.write("%s\n" % line.strip())

@@ -25,6 +25,10 @@ import pysrc.wrapper.sailfish
 import pysrc.wrapper.salmon
 from pysrc.body.cli_opts import catch_one
 
+_SUB_DIR_PROFILE_RESULT = "profile_result"
+
+_SUB_DIR_INDEX_FINAL = "index_final"
+
 _OPT_CIRI_AS_OUTPUT_PREFIX = "ciri_as_prefix"
 
 _OPT_VALUE_SAILFISH = "sailfish"
@@ -75,7 +79,18 @@ def _option_check_main_interface(opts=None):
                 FileNotFoundError("Error@circular_RNA_profiling: incorrect circular Alternative Splice file prefix"),
                 "path prefix to CIRI-AS report of circular exons")
 
-    oc.must_have("-o", os.path.exists,
+    # make sure the path should be a folder
+    def make_sure_there_is_a_folder(x):
+        try:
+            if not os.path.isdir(x):
+                os.mkdir(x)
+            if os.path.exists(x) and os.path.isdir(x):
+                return True
+        except Exception as e:
+            return False
+        return False
+
+    oc.must_have("-o", make_sure_there_is_a_folder,
                  FileNotFoundError("Error@circular_RNA_profiling: no place for output"),
                  "output folder that contains the index built by sailfish and quantification results")
 
@@ -173,14 +188,14 @@ def main(path_config, forced_refresh=False):
                                                       fa_out=circ_reference_seq,
                                                       convert_fun=pysrc.file_format.fa.make_adapter(k))
 
-    # decorate sequence , add adapter .
-    if "--mll" in circ_profile_config and circ_profile_config[{"--mll"}]:
-        mean_library_length = int(circ_profile_config["--mll"])
+    # decorate sequence , we set the mean of effective length to 150.
+    mean_library_length = int(circ_profile_config["--mll"]) if "--mll" in circ_profile_config and \
+                                                               circ_profile_config[{"--mll"}] else 150
 
-        pysrc.file_format.fa.convert_all_entries_in_fasta(fa_in=circ_reference_seq,
-                                                          fa_out=circ_reference_seq,
-                                                          convert_fun=pysrc.file_format.fa.pad_for_effective_length(
-                                                              mean_library_length))
+    pysrc.file_format.fa.convert_all_entries_in_fasta(fa_in=circ_reference_seq,
+                                                      fa_out=circ_reference_seq,
+                                                      convert_fun=pysrc.file_format.fa.pad_for_effective_length(
+                                                          mean_library_length))
 
     # 5th , combined those fa files
     final_refer = os.path.join(output_path, "final.fa")
@@ -192,7 +207,7 @@ def main(path_config, forced_refresh=False):
 
     # 6th , make index for quantifier
 
-    path_to_quantifier_index = os.path.join(output_path, "index_final")
+    path_to_quantifier_index = os.path.join(output_path, _SUB_DIR_INDEX_FINAL)
 
     index_parameters = {"--kmerSize": str(k),
                         "--transcripts": final_refer,
@@ -206,7 +221,7 @@ def main(path_config, forced_refresh=False):
     quantifier.index(para_config=index_parameters)
 
     # 7th , do quantification!
-    path_to_quantify_result = os.path.join(output_path, "profile_result")
+    path_to_quantify_result = os.path.join(output_path, _SUB_DIR_PROFILE_RESULT)
     if not os.path.exists(path_to_quantify_result):
         os.mkdir(path_to_quantify_result)
 
@@ -224,12 +239,17 @@ def main(path_config, forced_refresh=False):
     opts_quantifier["--output"] = path_to_quantify_result
     opts_quantifier["--geneMap"] = final_annotation
 
+    # # on salmon's bias model
+    if quantifier is pysrc.wrapper.salmon:
+        opts_quantifier["--seqBias"] = None
+        opts_quantifier["--gcBias"] = None
+
     quantifier.quantify(para_config=opts_quantifier)
 
-    pysrc.sub_module.summary_quant.aggregate_isoform_quantify_result(
-        quant_sf=os.path.join(path_to_quantify_result, "quant.sf"),
-        summarized_output=os.path.join(path_to_quantify_result, "summarized.quant"),
-        gtf_annotation=final_annotation)
+    # pysrc.sub_module.summary_quant.aggregate_isoform_quantify_result(
+    #     quant_sf=os.path.join(path_to_quantify_result, "quant.sf"),
+    #     summarized_output=os.path.join(path_to_quantify_result, "summarized.quant"),
+    #     gtf_annotation=final_annotation)
 
 
 def _prepare_circular_rna_annotation(circ_detection_report, circ_profile_config, circular_rna_gtf, genomic_annotation):
@@ -296,7 +316,7 @@ def _load_to_update_default_options(path_config):
 
 
 def _confirm_quantifier(circ_profile_config):
-    str_quantifier = circ_profile_config.get(_OPT_KEY_QUANTIFIER, "%s" % _OPT_VALUE_SAILFISH)
+    str_quantifier = circ_profile_config.get(_OPT_KEY_QUANTIFIER, _OPT_VALUE_SAILFISH)
     quantifier = _QUANTIFIER_BACKEND_OF[str_quantifier]
     _logger.debug("using %s as quantification backend" % str_quantifier)
     return quantifier

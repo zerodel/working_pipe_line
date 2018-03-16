@@ -34,11 +34,26 @@ def _get_parser(is_case_sensitive=True, **kwargs):
         my_parser.optionxform = str
     return my_parser
 
+#
+# def as_dict(parser):
+#
+#     return dict([(x, dict([(y, parser[x][y]) for y in parser[x]])) for x in parser])
+
+
+def override_a_by_b(a, b):
+    for part in b:
+        if part in a:
+            a[part].update(b[part])
+        else:
+            a[part] = b[part]
+
+    return a
+
 
 def single_config(path_config="", **kwargs):
     my_parser = _get_parser(**kwargs)
     my_parser.read(path_config)
-    return my_parser
+    return as_dict(my_parser)
 
 
 def config(cfg, **kwargs):
@@ -58,13 +73,25 @@ def config(cfg, **kwargs):
     elif isinstance(cfg, dict):
         my_parser.read_dict(cfg)
 
+    default_value = load_default_value()
+
+    my_parser = override_a_by_b(default_value, as_dict(my_parser))
+
     return my_parser
 
 
-def cfg2dict(config_object):
+def as_dict(config_object):
     dd = {}
     for section in config_object:
-        dd[section] = dict(config_object[section])
+        sub_section = {}
+        for key in config_object[section]:
+            try:
+                val = config_object[section][key]
+            except:
+                val = ""
+            sub_section[key] = val
+
+        dd[section] = sub_section
     return dd
 
 
@@ -118,9 +145,7 @@ def load_default_value(path_config_file=""):
 
     config_loaded = single_config(path_config_file)
 
-    if SECTION_GLOBAL in config_loaded and SECTION_META in config_loaded:
-        pass
-    else:
+    if SECTION_GLOBAL not in config_loaded or SECTION_META not in config_loaded:
         raise KeyError(
             "Error@loading_default_setting: must have 'META' and 'GLOBAL' section in {}".format(path_config_file))
 

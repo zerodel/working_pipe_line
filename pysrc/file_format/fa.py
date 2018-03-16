@@ -5,11 +5,13 @@
 #
 
 import functools
+import os
 
 import Bio.Seq
 import Bio.SeqIO
 
 import pysrc.body.logger
+import pysrc.file_format
 
 __doc__ = '''
 '''
@@ -47,3 +49,6 @@ def pad_for_effective_length(length_needed):
     return functools.partial(fun_inner, len_you_need=length_needed)
 
 
+def is_fasta(ref_path):
+    basename, extension_with_dot = os.path.splitext(ref_path)
+    return extension_with_dot in pysrc.file_format.fa.FASTA_FILE_EXTENSION

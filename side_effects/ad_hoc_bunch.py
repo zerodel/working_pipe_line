@@ -141,7 +141,7 @@ def _get_sra_file_path(sra, sra_root):
 def extract_fq(sra_id, up_level_path, sra_root):
     fq_path = os.path.join(up_level_path, _fq_path(sra_id))
     sra_path = _get_sra_file_path(sra_id, sra_root)
-
+    # WARNING : this code snippet need a specific default config file
     default_setting = pysrc.body.config.load_default_value()
     fastq_dump_bin = default_setting["META"]["fastq_dump_bin"] if "fastq_dump_bin" in default_setting[
         "META"] else "fastq-dump"

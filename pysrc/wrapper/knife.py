@@ -443,8 +443,3 @@ def export_as_bed(par_dict=None, **kwargs):
     _extract_bed_from_knife_report_path(output_bed_file_path=path_output_bed,
                                         path_of_knife_result=path_of_knife_result,
                                         line_checker=report_line_checker)
-
-
-if __name__ == "__main__":
-    print(__doc__)
-    print(opt_checker)

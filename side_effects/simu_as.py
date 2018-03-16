@@ -50,7 +50,12 @@ def load_circular_annotation(circ_gff):
     kv_transcript_gtf_lines = {}
     with open(circ_gff) as load_gtf:
         for line in load_gtf:
-            exon_entry = pysrc.file_format.gtf.GTFitem(line.strip())
+            try:
+                exon_entry = pysrc.file_format.gtf.GTFItem(line.strip())
+
+            except pysrc.file_format.gtf.AttributionIncomplete:
+                continue
+
             kv_transcript_gtf_lines.setdefault(exon_entry.get_transcript_id(), set()).add(str(exon_entry))
             kv_transcript_gene[exon_entry.get_transcript_id()] = exon_entry.get_gene_id()
 
@@ -62,7 +67,7 @@ def __fabricate_exon_skipping_for_non_na_circular_rna(context_of_transcript_isof
     for rna in [x for x in kv_isoform_gtf_lines.keys()]:
         if not gene_of[rna] == "n/a":
             exons_string_this_rna = kv_isoform_gtf_lines.pop(rna)
-            exons_this_rna = sorted([pysrc.file_format.gtf.GTFitem(x) for x in exons_string_this_rna],
+            exons_this_rna = sorted([pysrc.file_format.gtf.GTFItem(x) for x in exons_string_this_rna],
                                     key=lambda x: x.starts())
 
             if len(exons_this_rna) < 3:
@@ -77,10 +82,10 @@ def __fabricate_exon_skipping_for_non_na_circular_rna(context_of_transcript_isof
             exons_iso_0 = []
             exons_iso_1 = []
             for index_exon, exon in enumerate(exons_this_rna):
-                neo_exon_iso_0 = pysrc.file_format.gtf.GTFitem(str(exon))
+                neo_exon_iso_0 = pysrc.file_format.gtf.GTFItem(str(exon))
                 neo_exon_iso_0.set_transcript_id(iso_id_0)
 
-                neo_exon_iso_1 = pysrc.file_format.gtf.GTFitem(str(exon))
+                neo_exon_iso_1 = pysrc.file_format.gtf.GTFItem(str(exon))
                 neo_exon_iso_1.set_transcript_id(iso_id_1)
 
                 exons_iso_0.append(str(neo_exon_iso_0))

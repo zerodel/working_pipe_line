@@ -10,7 +10,7 @@ upper_root = os.path.abspath(os.path.dirname(os.path.dirname(os.path.realpath(__
 
 sys.path.append(upper_root)
 
-from pysrc.file_format.gtf import GTFitem
+from pysrc.file_format.gtf import GTFItem
 
 __doc__ = '''
 '''
@@ -28,11 +28,18 @@ def load_mapping_info_from_gtf(gtf_in):
     mapping = set()
     with open(gtf_in) as gtf:
         for line in gtf:
-            some_entry = GTFitem(line.strip())
-            attr_this = some_entry.get_attribute()
-            if "transcript_id" in attr_this and "gene_id" in attr_this:
-                mapping.add("{transcript_id}\t{gene_id}".format(gene_id=attr_this.get("gene_id"),
-                                                                transcript_id=attr_this.get("transcript_id")))
+            if line.startswith("#"):
+                continue
+            else:
+                some_entry = GTFItem(line.strip())
+                attr_this = some_entry.get_attribute()
+                if "transcript_id" in attr_this and "gene_id" in attr_this:
+                    gene_id = attr_this.get("gene_id", "")
+                    transcript_id = attr_this.get("transcript_id", "")
+                    gene_name = attr_this.get("gene_name", "")
+                    mapping.add("{transcript_id}\t{gene_id}\t{gene_name}".format(gene_id=gene_id,
+                                                                                 transcript_id=transcript_id,
+                                                                                 gene_name=gene_name))
 
     return mapping
 

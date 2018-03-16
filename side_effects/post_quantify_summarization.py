@@ -29,7 +29,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.annotation and args.q and args.o:
-        sq.aggregate_isoform_quantify_result(quant_sf=args.q, summarized_output=args.r, gtf_annotation=args.annotation)
+        sq.aggregate_isoform_quantify_result(quant_sf=args.q, summarized_output=args.o, gtf_annotation=args.annotation)
 
     else:
         if args.annotation and args.o:

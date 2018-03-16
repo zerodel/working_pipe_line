@@ -26,10 +26,12 @@ _FILES_IN_INDEX_FOLDER = ['hash.bin',
                           'header.json',
                           'indexing.log',
                           'quasi_index.log',
+                          #'refInfo.json',
                           'rsd.bin',
                           'sa.bin',
                           'txpInfo.bin',
-                          'versionInfo.json']
+                          'versionInfo.json'
+                          ]
 
 _GENE_MAPPING_FILE = "--geneMap"
 
@@ -149,7 +151,7 @@ def _build_salmon_cmd_with_order_given(para_dict, priority_order, phase="quant")
 def _check_valid_index(path):
     if os.path.exists(path) and os.path.isdir(path):
         files = os.listdir(path)
-        return all([x in _FILES_IN_INDEX_FOLDER for x in files])
+        return all([x in files for x in _FILES_IN_INDEX_FOLDER])
     return False
 
 

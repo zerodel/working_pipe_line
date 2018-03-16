@@ -90,7 +90,7 @@ class Cmd(object):
 
     def start(self):
         if not utilities.which(self.cmd_list[0]):
-            raise FileExistsError("unable to find the first term of cli-string")
+            raise FileExistsError("unable to find the first term of cli-string: %s" % self.cmd_list[0])
 
         try:
             self.process = subprocess.Popen(args=self.cmd_list,

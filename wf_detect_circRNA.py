@@ -16,6 +16,7 @@ import pysrc.body.option_check
 import pysrc.body.utilities
 import pysrc.wrapper.bwa
 import pysrc.wrapper.ciri
+import pysrc.wrapper.ciri2
 import pysrc.wrapper.ciri_as
 import pysrc.wrapper.knife
 
@@ -27,7 +28,9 @@ __TOOL_KNIFE = "knife"
 
 __TOOL_CIRI_AS = "ciri_as"
 
-__TOOL_CIRI = "ciri"  # todo : need a wrapper for CIRI 2
+__TOOL_CIRI = "ciri"
+
+__TOOL_CIRI2 = "ciri2"
 
 __TOOL_BWA = "bwa"
 
@@ -37,10 +40,11 @@ available_tools = {
     __TOOL_BWA: pysrc.wrapper.bwa,
     __TOOL_CIRI: pysrc.wrapper.ciri,
     __TOOL_CIRI_AS: pysrc.wrapper.ciri_as,
-    __TOOL_KNIFE: pysrc.wrapper.knife
+    __TOOL_KNIFE: pysrc.wrapper.knife,
+    __TOOL_CIRI2: pysrc.wrapper.ciri2
 }
 
-__tools_for_detection = [__TOOL_CIRI, __TOOL_CIRI_AS, __TOOL_KNIFE]
+__tools_for_detection = [__TOOL_CIRI, __TOOL_CIRI_AS, __TOOL_KNIFE, __TOOL_CIRI2]
 
 __doc__ = ''' top level interface of circRNA detection workflow.\n
 choose detector:  '{key_global}' in section [{section_name}]\n
