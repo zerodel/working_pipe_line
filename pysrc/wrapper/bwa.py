@@ -8,11 +8,14 @@ import copy
 import os
 import os.path
 
+import pysrc.body
 import pysrc.body.cli_opts
 import pysrc.body.option_check
 import pysrc.body.utilities
 import pysrc.body.worker
-
+import pysrc.file_format
+import pysrc.wrapper
+from pysrc.wrapper.ciri2 import BWA_T_SHORT_READS, BWA_T_LONGER_60BP
 
 __doc__ = ''' this is the wrapper of BWA aligner , it contains two phase: 1. index 2. align
 '''
@@ -184,6 +187,54 @@ def align(para_config=None, **kwargs):
         bwa_cmd.run()
 
     return align_phrase_options_raw
+
+
+def bwa_mapping_ciri_only(meta_setting, **kwargs):
+    try:
+        bwa_bin = meta_setting["bwa_bin"] if "bwa_bin" in meta_setting else kwargs.pop("bwa_bin")
+    except KeyError:
+        raise KeyError("Error@CIRI: no binary file for BWA aligner")
+
+    try:
+        index_bwa = meta_setting["bwa_index"] if "bwa_index" in meta_setting else kwargs.pop("bwa_index")
+    except KeyError:
+        raise KeyError("Error@CIRI: no index file for BWA ")
+
+    try:
+        read_file = meta_setting["read_file"] if "read_file" in meta_setting else kwargs.pop("read_file")
+    except KeyError:
+        raise KeyError("Error@CIRI: no sequence reads file for BWA")
+
+    try:
+        sam = meta_setting["sam"] if "sam" in meta_setting else kwargs.pop("sam")
+    except KeyError:
+        raise KeyError("Error@CIRI: no sam output for BWA")
+
+    try:
+        core_used = meta_setting["thread_num"] if "thread_num" in meta_setting else kwargs.pop("thread_num")
+    except KeyError:
+        cores_num_total = int(pysrc.body.utilities.core_numbers_of_cpu())
+        core_used = int(cores_num_total)/2 if cores_num_total > 5 else 1
+
+    if not is_path_contain_index(index_bwa):
+        index(para_config={"bwa_bin": bwa_bin, "in_fasta": index_bwa, "-a": "bwtsw"})
+
+    fq_test = pysrc.body.cli_opts.extract_entries_from_value_str(read_file)[0]
+    read_length = pysrc.file_format.fq.get_read_length(fq_test)
+
+    # determine bwa score, 19 for normal data, 15 for short data.
+    bwa_score_cutoff_given = meta_setting.get("bwa_score", None)
+    bwa_score_cutoff_default = BWA_T_SHORT_READS if read_length < 60 else BWA_T_LONGER_60BP
+    bwa_score_cutoff = bwa_score_cutoff_given if bwa_score_cutoff_given else bwa_score_cutoff_default
+
+    align(para_config={
+        "bwa_bin": bwa_bin,
+        "read_file": read_file,
+        "bwa_index": index_bwa,
+        "-T": bwa_score_cutoff,
+        "-t": str(core_used),  # todo: here we use all the cpu cores, greedy...
+    }, output=sam)
+
 
 
 if __name__ == "__main__":

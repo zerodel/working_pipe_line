@@ -19,7 +19,11 @@ import pysrc.file_format.sam
 import pysrc.wrapper.bwa
 import pysrc.wrapper.ciri
 
-__doc__ = ''' this is the wrapper of CIRI version 2, dog-food version ,I just copy form CIRI and make little change 
+
+BWA_T_LONGER_60BP = "19"
+BWA_T_SHORT_READS = "15"
+
+__doc__ = ''' this is the wrapper of CIRI version 1, it contains one phase: detection
 '''
 
 __author__ = 'zerodel'
@@ -37,14 +41,28 @@ _OPT_REF_DIR = "--ref_dir"
 _OPT_REF_FILE = "--ref_file"
 _OPT_SHOW_ALL = "--no_strigency"
 
-BWA_T_LONGER_60BP = pysrc.wrapper.ciri.BWA_T_LONGER_60BP
-BWA_T_SHORT_READS = pysrc.wrapper.ciri.BWA_T_SHORT_READS
+BWA_T_LONGER_60BP = BWA_T_LONGER_60BP
+BWA_T_SHORT_READS = BWA_T_SHORT_READS
 
 _ESSENTIAL_ARGUMENTS = [_OPT_INPUT, _OPT_OUTPUT, _OPT_REF_FILE, _OPT_ANNOTATION]
 
+
+def check_ref(ref_path):
+    if not os.path.exists(ref_path):
+        raise FileNotFoundError("Error: Path not exist: {}".format(ref_path))
+    else:
+        if os.path.isdir(ref_path):
+            return any([pysrc.file_format.fa.is_fasta(part) for part in os.listdir(ref_path)])
+
+        elif os.path.isfile(ref_path):
+            return pysrc.file_format.fa.is_fasta(ref_path)
+        else:
+            raise FileNotFoundError("Error: Path is not file or folder: {} ".format(ref_path))
+
+
 is_general_aligner_needed = False
 
-SECTION_DETECT = "CIRI2"
+SECTION_DETECT = "CIRI"
 
 _logger = pysrc.body.logger.default_logger(SECTION_DETECT)
 
@@ -83,7 +101,7 @@ def _check_opts(args_dict=None):
                  FileNotFoundError("Error: incorrect CIRI output file"),
                  "CIRI detection report file")
 
-    oc.one_and_only_one([_OPT_REF_DIR, _OPT_REF_FILE, ], pysrc.wrapper.ciri.check_ref,
+    oc.one_and_only_one([_OPT_REF_DIR, _OPT_REF_FILE, ], check_ref,
                         FileNotFoundError("Error: incorrect CIRI ref file"),
                         "reference file for CIRI/CIRI2")
 
@@ -169,7 +187,8 @@ def detect(par_dict=None, **kwargs):
                     map_job_setting["bwa_score"] = bwa_score_cutoff
 
                 _logger.info("bwa mapping with parameter: %s" % str(map_job_setting))
-                pysrc.wrapper.ciri.bwa_mapping_ciri_only(map_job_setting)  # perform the mapping using bwa
+
+                pysrc.wrapper.bwa.bwa_mapping_ciri_only(map_job_setting)  # perform the mapping using bwa
             except Exception as e:
                 _logger.error(" ERROR occurs during preparing the SAM file for CIRI")
                 raise e  # no idea how to handle it
