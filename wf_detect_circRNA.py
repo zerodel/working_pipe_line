@@ -42,7 +42,7 @@ available_tools = {
     __TOOL_KNIFE: pysrc.wrapper.knife,
 }
 
-__tools_for_detection = [__TOOL_CIRI, __TOOL_CIRI_AS, __TOOL_KNIFE, __TOOL_CIRI2]
+__tools_for_detection = [__TOOL_CIRI, __TOOL_CIRI_AS, __TOOL_KNIFE]
 
 __doc__ = ''' top level interface of circRNA detection workflow.\n
 choose detector:  '{key_global}' in section [{section_name}]\n
