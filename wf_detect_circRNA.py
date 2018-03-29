@@ -30,7 +30,6 @@ __TOOL_CIRI_AS = "ciri_as"
 
 __TOOL_CIRI = "ciri"
 
-__TOOL_CIRI2 = "ciri2"
 
 __TOOL_BWA = "bwa"
 
@@ -38,10 +37,9 @@ SECTION_CIRC_DETECTION = 'CIRC_DETECTION'
 
 available_tools = {
     __TOOL_BWA: pysrc.wrapper.bwa,
-    __TOOL_CIRI: pysrc.wrapper.ciri,
+    __TOOL_CIRI: pysrc.wrapper.ciri2,
     __TOOL_CIRI_AS: pysrc.wrapper.ciri_as,
     __TOOL_KNIFE: pysrc.wrapper.knife,
-    __TOOL_CIRI2: pysrc.wrapper.ciri2
 }
 
 __tools_for_detection = [__TOOL_CIRI, __TOOL_CIRI_AS, __TOOL_KNIFE, __TOOL_CIRI2]
