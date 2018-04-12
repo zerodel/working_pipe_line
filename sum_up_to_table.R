@@ -110,7 +110,7 @@ MakeUpTable <- function(sum.up.data,
     if (is.null(dim(x.out)))
     {
         
-        return(data.frame("name" = whole.entry.list, "val"= x.out, stringsAsFactors = F))
+        return(data.frame("name" = whole.entry.list, "val" = x.out, stringsAsFactors = F))
     } else{
         row.names(x.out) <- whole.entry.list
         x.out <- RowNameAsFirstCol(x.out, entry.name)
@@ -161,7 +161,7 @@ adhocLoadListMappingFile <- function(lst.path.mapping.info, ...) {
                           stringsAsFactors = F)
     })
     
-    do.call(rbind, info.mapping.list) %>% dplyr::distinct()
+    dplyr::bind_rows(info.mapping.list) %>% dplyr::distinct()
 } # end of adhocLoadListMappingFile
 
 
@@ -208,7 +208,16 @@ adhocDecoratedExpressionWithGeneInfo <-
 
 all.your.args <- commandArgs(trailingOnly = T)
 
-stopifnot(length(all.your.args)>2)
+if (length(all.your.args) <= 2) {
+    stop("=========================================================
+functions to sum up your quantification result by type and source, 
+
+usage:
+
+Rscript this.R host_info output_path sample_name_1 sample_quant_path_1 [sample_name_2 sample_quant_path_2] ... ..."
+         )    
+}
+stopifnot(length(all.your.args) > 2)
 
 
 path.to.mapping.info <- all.your.args[1]
