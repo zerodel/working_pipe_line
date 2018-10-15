@@ -7,42 +7,6 @@
 
 #' ARGUMENTS  
 
-
-# check dependency  and try install missing package -----------------------
-BasicInstall <- function(p) {
-    install.packages(p, repos = "http://cran.r-project.org")
-}
-
-BioconductorInstall <- function(p) {
-    source("https://bioconductor.org/biocLite.R")
-    biocLite(p)
-}
-
-CheckDependencies <- function(package_list, func_install=BasicInstall) {
-    for (p in package_list) {
-        if (!suppressWarnings(suppressMessages(require(
-            p,
-            character.only = TRUE,
-            quietly = TRUE,
-            warn.conflicts = FALSE
-        )))) {
-            #' try use cran as package source.
-            func_install(p)
-            suppressWarnings(suppressMessages(library(
-                p,
-                character.only = TRUE,
-                quietly = TRUE,
-                warn.conflicts = FALSE
-            )))
-        }
-    }
-}
-
-
-CheckDependencies(c("tidyverse", "optparse", "data.table"))
-CheckDependencies(c("DESeq2", "GenomicFeatures"), func_install = BioconductorInstall)
-
-
 # clean enviroment and load packages --------------------------------------------------------
 rm(list = base::ls())
 library(tidyverse)
@@ -50,7 +14,7 @@ library(tidyverse)
 # ---------------------------------------------------------
 
 
-LoadQuant <- function(path, sample_name = NULL) {
+Load_Quant <- function(path, sample_name = NULL) {
     if (require(data.table)) {
         x <- data.table::fread(path, stringsAsFactors = F)
     } else{
@@ -76,7 +40,7 @@ Serial_Sample_Sub_Path <- function(dir.quant, suffix_path = SUB_PATH_QUANT) {
     samples.raw <-
         list.dirs(dir.quant, full.names = F, recursive = F)
     path.sf <-
-        paste(safe.dir, "/", samples.raw, suffix_path, sep = "")
+        paste(safe.dir, "/", samples.raw, "/",suffix_path, sep = "")
     res <- list()
     for (x in seq_along(samples.raw)) {
         res[[samples.raw[x]]] <- path.sf[x]
@@ -85,3 +49,10 @@ Serial_Sample_Sub_Path <- function(dir.quant, suffix_path = SUB_PATH_QUANT) {
     return(res)
 }
 
+Load_Serial_Quant <- function(lst.sample.quant){
+    df.quant.lst <- list()
+    for (x in names(lst.sample.quant)) {
+        df.quant.lst[[x]] <- Load_Quant(lst.sample.quant[[x]], x)
+    }
+    dplyr::bind_rows(df.quant.lst)
+}

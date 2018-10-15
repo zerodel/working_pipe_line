@@ -202,7 +202,7 @@ def detect(par_dict=None, **kwargs):
     ciri_report = opts.get(_OPT_OUTPUT)
 
     path_bed_out = pysrc.body.cli_opts.extract_one(opts, key=_OPT_BED_OUTPUT,
-                                                   default=os.path.join(os.path.splitext(opts[_OPT_OUTPUT])[0], ".bed"))
+                                                   default=os.path.splitext(opts[_OPT_OUTPUT])[0] + ".bed")
 
     reads_lower_limit = pysrc.body.cli_opts.extract_one(opts,
                                                         _OPT_FILTER_READS_NUMBER,
