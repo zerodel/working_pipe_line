@@ -5,7 +5,7 @@
 
 #' USAGE
 
-#' ARGUMENTS  
+#' ARGUMENTS
 
 
 # check dependency  and try install missing package -----------------------
@@ -154,7 +154,9 @@ base::rm(list = base::ls())
 
 #' step2, list -> table -> adjace_list
 .adjace_list_from_table <- function(table.form.ini) {
-    stopifnot(all(c("uid", "value", "section", "key") %in% names(table.form.ini)))
+    stopifnot(all(
+        c("uid", "value", "section", "key") %in% names(table.form.ini)
+    ))
     
     regexpINFER <- "\\$\\{.+?\\:.+?\\}"
     
@@ -365,7 +367,7 @@ base::rm(list = base::ls())
 #'
 #' @param path.ini path to INI file
 #'
-#' @return list of list 
+#' @return list of list
 #' @export
 #'
 #' @examples
@@ -421,7 +423,6 @@ has_null_ref <- function(ini, verbose = F) {
 export_ini <- function(ini.object,
                        use.abs = F,
                        tabulate = F) {
-    
     lst.ini <- .make_sure(ini.object)
     tab.lst <- .table_from_raw_list(lst.ini)
     adj.lst <- .adjace_list_from_table(tab.lst)
@@ -467,7 +468,7 @@ write_ini <- function(obj.ini, path.to.export, use.abs = F) {
                      path.to.export)
 }
 
-#' 
+#'
 #'
 #' @param obj.ini an iniparser object returned by ReadINI
 #' @param path.to.export path to the result file
@@ -493,8 +494,6 @@ write_csv <- function(obj.ini, path.to.export, use.abs = F) {
 # end of ini part ---------------------------------------------------------
 
 
-
-
 guess_sample_info <- function(abs.dir.fq.raw) {
     if (is.null(abs.dir.fq.raw)) {
         return(NULL)
@@ -504,10 +503,12 @@ guess_sample_info <- function(abs.dir.fq.raw) {
         list.files(abs.dir.fq, pattern = "(\\.fq$)|(\\.fastq$)")
     strip.fq.name <- gsub("(\\.fq$)|(\\.fastq$)", "", lst.fq)
     
-    pe_num <- regmatches(strip.fq.name, regexec("\\d$", strip.fq.name))
-
-    pe_num_simple <- as.numeric(unlist(ifelse(nchar(pe_num) == 1 ,pe_num, NA)))
-
+    pe_num <-
+        regmatches(strip.fq.name, regexec("\\d$", strip.fq.name))
+    
+    pe_num_simple <-
+        as.numeric(unlist(ifelse(nchar(pe_num) == 1 , pe_num, NA)))
+    
     info.fq <- data.frame(
         "fq" = strip.fq.name,
         "pe" = pe_num_simple,
@@ -519,90 +520,138 @@ guess_sample_info <- function(abs.dir.fq.raw) {
 } # end of Guess_Sample_Info
 
 
-
 extract_seq_info <- function(dir_seq) {
     information.seqs <- guess_sample_info(dir_seq)
     base::split(information.seqs$abs.path, information.seqs$sample)
     
 }
 
-
-
-dump_cfg_files <- function(lst.of.sample.ini, cfg.dir){
+dump_cfg_files <- function(lst.of.sample.ini, cfg.dir) {
     for (sample.id in names(lst.of.sample.ini)) {
         path.ini.this.sample <- paste0(cfg.dir, "/", sample.id, ".cfg")
         write_ini(lst.of.sample.ini[[sample.id]], path.ini.this.sample)
-        
     }
 }
 
 
+mix_up_shell_content_this_sample <-
+    function(path.cfg,
+             path.workflow.detection,
+             path.workflow.quant) {
+        c(
+            "#! /usr/bin/env bash",
+            paste0("python3", path.workflow.detection, path.cfg, collapse = " "),
+            paste0("python3", path.workflow.quant, path.cfg, collapse = " ")
+        )
+    }
+
+mix_up_shell_content_main <- function(lst.path.shell.script) {
+    tmp <- paste("bash", lst.path.shell.script, sep = " ")
+    c("#! /usr/bin/env bash", tmp)
+}
+
+
+write_the_shell_script <-
+    function(path.shell.should.be,
+             lst.str.shell.content) {
+        file.shell.op <- file(path.shell.should.be)
+        writeLines(lst.str.shell.content, file.shell.op)
+        close(file.shell.op)
+    }
+
 # start the command args part -----------------------------------------------------
 
 
-main <- function(template.path, cfg.dir) {
-  
-  
-  #' initialize the ini object and read the correct information from the
-  ini.template <- read_ini(template.path)
-  
-  dir_seq <- ini.template$GLOBAL$fq_dir
-  detection.dir <-  ini.template$GLOBAL$detection_dir
-  quantification.dir <- ini.template$GLOBAL$quant_root_dir
-  
-  #' get script path from the cfg file
-  path.work.flow.detection <- ini.template$META$pipeline_script_detection
-  path.work.flow.profile <- ini.template$META$pipeline_script_profile
-  
-  stopifnot(file.exists(path.work.flow.detection))
-  stopifnot(file.exists(path.work.flow.profile))
-  
-  lst.fq <- extract_seq_info(dir_seq)
-  
-  for (sample.id in names(lst.fq)) {
-  
-      #' for each sample , produce a cfg from the template file
-      fq.sorted <- sort(lst.fq[[sample.id]])
-      num.fq.this.sample <- length(fq.sorted)
-      stopifnot(num.fq.this.sample %in% c(1,2))
-  
-      #' make sure the quantification root for this sample exists
-      dir.this.sample.quant <- paste0(quantification.dir, "/", sample.id)
-      if (!dir.exists(dir.this.sample.quant)) {
-          dir.create(dir.this.sample.quant)
-      }
-  
-      #' copy the ini here
-      ini.this <- ini.template
-      ini.this$GLOBAL$sample_id <- sample.id
-      ini.this$CUSTOM$quant_dir <- dir.this.sample.quant
-      ini.this$CIRI[["--in"]] <- paste0(detection.dir, "/", sample.id, ".sam")
-  
-      if (num.fq.this.sample == 2 ) {
-          #' PE
-  
-          ini.this$CUSTOM$r1 = fq.sorted[1]
-          ini.this$CUSTOM$r2 = fq.sorted[2]
-          ini.this$CIRI[["--seqs"]] = "${CUSTOM:r1} ${CUSTOM:r2}"
-          ini.this$CIRC_PROFILE[["-1"]] = "${CUSTOM:r1}"
-          ini.this$CIRC_PROFILE[["-2"]] = "${CUSTOM:r2}"
-  
-      } else {
-          #' SE
-          ini.this$CUSTOM$r1 = fq.sorted[1]
-          ini.this$CIRI[["--seqs"]] = "${CUSTOM:r1}"
-          ini.this$CIRC_PROFILE[["-r"]] = "${CUSTOM:r1}"
-  
-      }
-  
-      path.ini.this.sample <- paste0(cfg.dir, "/", sample.id, ".cfg")
-      write_ini(ini.this, path.ini.this.sample) #' this is where we produce the ini files
-      
-      
-      
-  } # end of loop on each sample
-
-
+main <- function(template.path, cfg.dir, sh.dir = NULL) {
+    #' initialize the ini object and read the correct information from the
+    ini.template <- read_ini(template.path)
+    
+    dir_seq <- ini.template$GLOBAL$fq_dir
+    detection.dir <-  ini.template$GLOBAL$detection_dir
+    quantification.dir <- ini.template$GLOBAL$quant_root_dir
+    
+    #' get script path from the cfg file
+    path.work.flow.detection <-
+        ini.template$META$pipeline_script_detection
+    path.work.flow.profile <-
+        ini.template$META$pipeline_script_profile
+    
+    stopifnot(file.exists(path.work.flow.detection))
+    stopifnot(file.exists(path.work.flow.profile))
+    
+    if (is.null(sh.dir)) {
+        sh.dir <- cfg.dir
+    }
+    stopifnot(dir.exists(sh.dir))
+    stopifnot(dir.exists(cfg.dir))
+    
+    lst.fq <- extract_seq_info(dir_seq)
+    lst.shell.path <- NULL   #' for the main shell script
+    
+    for (sample.id in names(lst.fq)) {
+        #' for each sample , produce a cfg from the template file
+        fq.sorted <- sort(lst.fq[[sample.id]])
+        num.fq.this.sample <- length(fq.sorted)
+        stopifnot(num.fq.this.sample %in% c(1, 2))
+        
+        #' make sure the quantification root for this sample exists
+        dir.this.sample.quant <-
+            paste0(quantification.dir, "/", sample.id)
+        if (!dir.exists(dir.this.sample.quant)) {
+            dir.create(dir.this.sample.quant)
+        }
+        
+        #' copy the ini here
+        ini.this <- ini.template
+        ini.this$GLOBAL$sample_id <- sample.id
+        ini.this$CUSTOM$quant_dir <- dir.this.sample.quant
+        ini.this$CIRI[["--in"]] <-
+            paste0(detection.dir, "/", sample.id, ".sam")
+        
+        if (num.fq.this.sample == 2) {
+            #' PE
+            
+            ini.this$CUSTOM$r1 = fq.sorted[1]
+            ini.this$CUSTOM$r2 = fq.sorted[2]
+            ini.this$CIRI[["--seqs"]] = "${CUSTOM:r1} ${CUSTOM:r2}"
+            ini.this$CIRC_PROFILE[["-1"]] = "${CUSTOM:r1}"
+            ini.this$CIRC_PROFILE[["-2"]] = "${CUSTOM:r2}"
+            
+        } else {
+            #' SE
+            ini.this$CUSTOM$r1 = fq.sorted[1]
+            ini.this$CIRI[["--seqs"]] = "${CUSTOM:r1}"
+            ini.this$CIRC_PROFILE[["-r"]] = "${CUSTOM:r1}"
+            
+        }
+        
+        
+        path.ini.this.sample <-
+            paste0(cfg.dir, "/", sample.id, ".cfg")
+        write_ini(ini.this, path.ini.this.sample) #' this is where we produce the ini files
+        
+        #" make a shell script for each sample
+        shell.content.this.sample <-
+            mix_up_shell_content_this_sample(path.ini.this.sample,
+                                             path.work.flow.detection,
+                                             path.work.flow.profile)
+        path.shell.script.this.sample <-
+            paste0(sh.dir, "/", sample.id, ".sh")
+        
+        lst.shell.path <-
+            c(lst.shell.path, path.shell.script.this.sample)
+        write_the_shell_script(path.shell.script.this.sample,
+                               shell.content.this.sample)
+        
+        
+    } # end of loop on each sample
+    
+    #' write the main script for this serial samples.
+    path.to.main.shell <- paste0(dirname(sh.dir), "/", "main.sh")
+    write_the_shell_script(path.to.main.shell,
+                           mix_up_shell_content_main(lst.shell.path))
+    
+    
 }
 
 
@@ -613,7 +662,10 @@ cli_args = commandArgs(trailingOnly = T)
 template.path <- cli_args[1]
 cfg.dir <- cli_args[2]
 
+if (length(cli_args) > 2) {
+    sh.dir <- cli_args[3]
+} else{
+    sh.dir <- NULL
+}
 
-main(template.path, cfg.dir)
-
-
+main(template.path, cfg.dir, sh.dir)
