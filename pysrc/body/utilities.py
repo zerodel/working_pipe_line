@@ -117,9 +117,9 @@ class Bunch(dict):
         self.__dict__ = self
 
 
-def do_merge_files(file_output, *args):
+def do_merge_files(file_output, list_of_reference):
     with open(file_output, "a") as output_lines:
-        for file_name in args:
+        for file_name in list_of_reference:
             if file_name == file_output:
                 _logger.info("seems this file will append itself: %s" % file_name)
             else:

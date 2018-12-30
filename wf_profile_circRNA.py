@@ -35,6 +35,13 @@ _OPT_VALUE_SAILFISH = "sailfish"
 
 _OPT_KEY_QUANTIFIER = "quantifier"
 
+_OPT_KEY_ADDITIONAL_CIRC_REF = "additional_circ_ref"
+_OPT_KEY_ADDITIONAL_LINEAR_REF = "additional_linear_ref"
+
+_OPT_KEY_ADDITIONAL_ANNOTATION = "additional_annotation"
+
+_OPT_KEY_USE_LINC_EXPLICITLY = "flag_use_linc_explicitly"
+
 _QUANTIFIER_BACKEND_OF = {"sailfish": pysrc.wrapper.sailfish,
                           "salmon": pysrc.wrapper.salmon}
 
@@ -112,6 +119,18 @@ def _option_check_main_interface(opts=None):
                 FileNotFoundError("Error@circular_RNA_profiling: no single end sequence input file"),
                 "path to single-end raw sequencing reads file.")
 
+    oc.may_need(_OPT_KEY_ADDITIONAL_CIRC_REF, os.path.exists,
+                FileNotFoundError("Error@circular_RNA_profiling: additional circular reference file not exist"))
+
+    oc.may_need(_OPT_KEY_ADDITIONAL_ANNOTATION, os.path.exists,
+                FileNotFoundError("Error@circular_RNA_profiling: additional annotation not exist"))
+
+    oc.may_need(_OPT_KEY_ADDITIONAL_LINEAR_REF, os.path.exists,
+                FileNotFoundError("Error@circular_RNA_profiling: additional linear reference file not exist"))
+
+    oc.may_need(_OPT_KEY_USE_LINC_EXPLICITLY, lambda x: x in ("T", "F", "True", "False", ""),
+                KeyError("Error@circular_RNA_profiling: incorrect flag to specify whether linc should be explicit"))
+
     oc.forbid_these_args("-h", "--help")
     return oc
 
@@ -148,6 +167,13 @@ def main(path_config, forced_refresh=False):
 
     output_path = catch_one(circ_profile_config, "-o")
 
+    # additional options
+    additional_circ_ref = circ_profile_config.get(_OPT_KEY_ADDITIONAL_CIRC_REF)
+    additional_annotation = circ_profile_config.get(_OPT_KEY_ADDITIONAL_ANNOTATION)
+    additional_linear_ref = circ_profile_config.get(_OPT_KEY_ADDITIONAL_LINEAR_REF)
+    use_linc = circ_profile_config.get(_OPT_KEY_USE_LINC_EXPLICITLY)
+
+    # assign file path
     spliced_linear_reference = os.path.join(output_path, "ref_linear.fa")
     circular_rna_gtf = os.path.join(output_path, "circ_only.gtf")
     circ_reference_seq = os.path.join(output_path, "circ_only.fa")
@@ -172,17 +198,6 @@ def main(path_config, forced_refresh=False):
                                                     path_ref_sequence_file=genome_fa,
                                                     output=circ_reference_seq)
 
-    # Wednesday, 5 April 2017: add same procedure for lincRNA
-
-    if not os.path.exists(linc_rna_gtf) or forced_refresh:
-        pysrc.being.linc.prepare_linc_annotation(original_gff=genomic_annotation,
-                                                 target_linc_annotation=linc_rna_gtf)
-
-    if not os.path.exists(linc_reference_seq) or forced_refresh:
-        pysrc.being.linc.prepare_linc_transcriptome_seq(linc_annotation=linc_rna_gtf,
-                                                        genomic_seq=genome_fa,
-                                                        target_fa=linc_reference_seq)
-
     # 4th, do operations on circular RNA reference .lincRNA are treated as linear mRNA
     pysrc.file_format.fa.convert_all_entries_in_fasta(fa_in=circ_reference_seq,
                                                       fa_out=circ_reference_seq,
@@ -197,13 +212,44 @@ def main(path_config, forced_refresh=False):
                                                       convert_fun=pysrc.file_format.fa.pad_for_effective_length(
                                                           mean_library_length))
 
+    # ###### ========================================================
+    # process additional reference . including linc and custom circular RNA 18-12-21
+    lst_reference_fa = [spliced_linear_reference, circ_reference_seq]
+    lst_annotation = [genomic_annotation, circular_rna_gtf]
+
+    if additional_linear_ref and os.path.exists(additional_linear_ref):
+        lst_reference_fa.append(additional_linear_ref)
+
+    if additional_circ_ref:
+        additional_circ_ref_decoded = os.path.join(output_path, "additional_circ_ref.fa")
+        pysrc.file_format.fa.convert_all_entries_in_fasta(fa_in=additional_circ_ref,
+                                                          fa_out=additional_circ_ref_decoded,
+                                                          convert_fun=pysrc.file_format.fa.pad_for_effective_length(
+                                                              mean_library_length))
+        lst_reference_fa.append(additional_circ_ref_decoded)
+
+    if additional_annotation:
+        lst_annotation.append(additional_annotation)
+
+    # Wednesday, 5 April 2017: add same procedure for lincRNA
+    if use_linc:
+        if not os.path.exists(linc_rna_gtf) or forced_refresh:
+            pysrc.being.linc.prepare_linc_annotation(original_gff=genomic_annotation,
+                                                     target_linc_annotation=linc_rna_gtf)
+
+        if not os.path.exists(linc_reference_seq) or forced_refresh:
+            pysrc.being.linc.prepare_linc_transcriptome_seq(linc_annotation=linc_rna_gtf,
+                                                            genomic_seq=genome_fa,
+                                                            target_fa=linc_reference_seq)
+        lst_reference_fa.append(linc_reference_seq)
+
     # 5th , combined those fa files
     final_refer = os.path.join(output_path, "final.fa")
-    pysrc.body.utilities.do_merge_files(final_refer, spliced_linear_reference, circ_reference_seq, linc_reference_seq)
+    pysrc.body.utilities.do_merge_files(final_refer, lst_reference_fa)
 
     # linc RNA is already in original gtf file
     final_annotation = os.path.join(output_path, "final.gtf")
-    pysrc.body.utilities.do_merge_files(final_annotation, genomic_annotation, circular_rna_gtf)
+    pysrc.body.utilities.do_merge_files(final_annotation, lst_annotation)
 
     # 6th , make index for quantifier
 
@@ -282,7 +328,7 @@ def _prepare_circular_rna_annotation(circ_detection_report, circ_profile_config,
         _gtf_operator.do_make_gtf_for_circular_prediction_greedy(circular_candidate_regions=bed_filtered,
                                                                  gff_db=genomic_annotation,
                                                                  output_gtf_path_name=tmp_gtf)
-        pysrc.body.utilities.do_merge_files(circular_rna_gtf, isoform_gtf, tmp_gtf)
+        pysrc.body.utilities.do_merge_files(circular_rna_gtf, (isoform_gtf, tmp_gtf))
 
     else:
         _gtf_operator.do_make_gtf_for_circular_prediction_greedy(circular_candidate_regions=circ_detection_report,

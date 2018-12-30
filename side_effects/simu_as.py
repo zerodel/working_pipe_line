@@ -132,9 +132,9 @@ def prepare_seq(linear_gtf, circular_gtf, genomic_seqs, target_folder):
                 fa_quant.write(">%s\n%s\n" % (r.id, seq_quant))
 
     combined_fa_simu = os.path.join(target_folder, "simu.fa")
-    pysrc.body.utilities.do_merge_files(combined_fa_simu, path_temp_linear_seq, path_temp_circular_simu)
+    pysrc.body.utilities.do_merge_files(combined_fa_simu, (path_temp_linear_seq, path_temp_circular_simu))
     combined_fa_quant = os.path.join(target_folder, "quant.fa")
-    pysrc.body.utilities.do_merge_files(combined_fa_quant, path_temp_linear_seq, path_temp_circular_quant)
+    pysrc.body.utilities.do_merge_files(combined_fa_quant, (path_temp_linear_seq, path_temp_circular_quant))
 
     os.remove(path_temp_circular_seq)
     os.remove(path_temp_linear_seq)
