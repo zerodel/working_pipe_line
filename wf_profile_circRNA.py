@@ -171,7 +171,7 @@ def main(path_config, forced_refresh=False):
     additional_circ_ref = circ_profile_config.get(_OPT_KEY_ADDITIONAL_CIRC_REF)
     additional_annotation = circ_profile_config.get(_OPT_KEY_ADDITIONAL_ANNOTATION)
     additional_linear_ref = circ_profile_config.get(_OPT_KEY_ADDITIONAL_LINEAR_REF)
-    use_linc = circ_profile_config.get(_OPT_KEY_USE_LINC_EXPLICITLY)
+    use_linc = _OPT_KEY_USE_LINC_EXPLICITLY in circ_profile_config
 
     # assign file path
     spliced_linear_reference = os.path.join(output_path, "ref_linear.fa")
