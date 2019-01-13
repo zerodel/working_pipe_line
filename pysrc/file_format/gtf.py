@@ -127,29 +127,48 @@ class GTFItem(object):
     def get_biotype(self):
         return self._attributes.get(GENE_BIOTYPE, "")
 
-    def _parse_line(self, line_in_gtf):
-        """ parse a line in seq-file file ,
-        only gene id and transcript id will be extracted from attribute string
-        """
-        if line_in_gtf.strip().startswith("#"):
+    # def _parse_line(self, line_in_gtf):
+    #     """ parse a line in seq-file file ,
+    #     only gene id and transcript id will be extracted from attribute string
+    #     """
+    #     if line_in_gtf.strip().startswith("#"):
+    #         self.init_null_attribute()
+    #         self._attributes = None
+    #         raise AttributionIncomplete("This line is a comment: %s " % line_in_gtf)
+    #     else:
+    #         gtf_line_parts = line_in_gtf.strip().split("\t")
+    #
+    #         try:
+    #
+    #             self._seqname, self._source, self._feature, self._start, self._end, self._score, self._strand, self._frame = gtf_line_parts[:8]
+    #             self._start = int(self._start)
+    #             self._end = int(self._end)
+    #
+    #         except IndexError as e:
+    #             raise e
+    #
+    #         try:
+    #             #self._check_attribute_string(gtf_line_parts[-1])
+    #             self._attributes = self.attribute2dict(gtf_line_parts[-1])
+    #         except Exception as e:
+    #             raise e
+
+    def _parse_line(self, gtf_line):
+        gtf_line_parts = gtf_line.strip().split()  # here use the default parameters
+
+        if gtf_line.strip().startswith("#") or len(gtf_line_parts) < 9:
             self.init_null_attribute()
             self._attributes = None
-            raise AttributionIncomplete("This line is a comment: %s " % line_in_gtf)
+            raise AttributionIncomplete("This line is a comment: %s " % gtf_line)
         else:
-            gtf_line_parts = line_in_gtf.strip().split("\t")
+            # think about the first 8 elements
+            self._seqname, self._source, self._feature, self._start, self._end, self._score, self._strand, self._frame = gtf_line_parts[:8]
+            self._start = int(self._start)
+            self._end = int(self._end)
 
+            # try to handle the final attributions part .
             try:
-
-                self._seqname, self._source, self._feature, self._start, self._end, self._score, self._strand, self._frame = gtf_line_parts[:8]
-                self._start = int(self._start)
-                self._end = int(self._end)
-
-            except IndexError as e:
-                raise e
-
-            try:
-                #self._check_attribute_string(gtf_line_parts[-1])
-                self._attributes = self.attribute2dict(gtf_line_parts[-1])
+                self._attributes = self.attribute2dict("\t".join(gtf_line_parts[8:]))
             except Exception as e:
                 raise e
 

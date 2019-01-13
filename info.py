@@ -6,6 +6,7 @@
 import pysrc.body.config
 import pysrc.wrapper.bwa
 import pysrc.wrapper.ciri
+import pysrc.wrapper.ciri2
 import pysrc.wrapper.knife
 import pysrc.wrapper.rsem
 import pysrc.wrapper.sailfish
@@ -63,6 +64,7 @@ def _add_tool(name, wrapper, description):
 _add_tool("fastqc", pysrc.wrapper.fastqc, "fastqc , a QC tool")
 _add_tool("bwa", pysrc.wrapper.bwa, "BWA and BWA MEM ")
 _add_tool("ciri", pysrc.wrapper.ciri, "CIRI : a circular RNA detection tool ")
+_add_tool("ciri2", pysrc.wrapper.ciri2, "CIRI2 : a circular RNA detection tool, multiple core empowered ")
 _add_tool("ciri_as", pysrc.wrapper.ciri_as, "CIRI-AS: circular RNA Alternative Splicing Event detection tool")
 _add_tool("knife", pysrc.wrapper.knife, "KNIFE: a circular RNA detection tool ")
 _add_tool("rsem", pysrc.wrapper.rsem, "RSEM : a RNA seq quantification tool")
