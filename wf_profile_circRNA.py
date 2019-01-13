@@ -42,6 +42,8 @@ _OPT_KEY_ADDITIONAL_ANNOTATION = "additional_annotation"
 
 _OPT_KEY_USE_LINC_EXPLICITLY = "flag_use_linc_explicitly"
 
+_OPT_KEY_REJECT_LINEAR = "flag_reject_linear"
+
 _QUANTIFIER_BACKEND_OF = {"sailfish": pysrc.wrapper.sailfish,
                           "salmon": pysrc.wrapper.salmon}
 
@@ -120,16 +122,27 @@ def _option_check_main_interface(opts=None):
                 "path to single-end raw sequencing reads file.")
 
     oc.may_need(_OPT_KEY_ADDITIONAL_CIRC_REF, os.path.exists,
-                FileNotFoundError("Error@circular_RNA_profiling: additional circular reference file not exist"))
+                FileNotFoundError("Error@circular_RNA_profiling: additional circular reference file not exist"),
+                "path to additional circular RNA reference file (.fa), ")
 
     oc.may_need(_OPT_KEY_ADDITIONAL_ANNOTATION, os.path.exists,
-                FileNotFoundError("Error@circular_RNA_profiling: additional annotation not exist"))
+                FileNotFoundError("Error@circular_RNA_profiling: additional annotation not exist"),
+                "path to additional circular RNA annotation file in gtf format")
 
     oc.may_need(_OPT_KEY_ADDITIONAL_LINEAR_REF, os.path.exists,
-                FileNotFoundError("Error@circular_RNA_profiling: additional linear reference file not exist"))
+                FileNotFoundError("Error@circular_RNA_profiling: additional linear reference file not exist"),
+                "path to additional linear RNA reference file(.fa)")
 
     oc.may_need(_OPT_KEY_USE_LINC_EXPLICITLY, lambda x: x in ("T", "F", "True", "False", ""),
-                KeyError("Error@circular_RNA_profiling: incorrect flag to specify whether linc should be explicit"))
+                KeyError("Error@circular_RNA_profiling: incorrect flag to specify whether linc should be explicit"),
+                "flag to specify whether linc RNA should be include in quantification result")
+
+    oc.may_need(_OPT_KEY_REJECT_LINEAR, lambda x: x in ("T", "F", "True", "False", ""),
+                KeyError("""Error@circular_RNA_profiling: incorrect flag 
+                to specify whether index should reject linear RNA"""),
+                """flag to specify whether to reject linear RNA during quantification, for example for a RNase R  
+                treated sample"""
+                )
 
     oc.forbid_these_args("-h", "--help")
     return oc
@@ -172,6 +185,7 @@ def main(path_config, forced_refresh=False):
     additional_annotation = circ_profile_config.get(_OPT_KEY_ADDITIONAL_ANNOTATION)
     additional_linear_ref = circ_profile_config.get(_OPT_KEY_ADDITIONAL_LINEAR_REF)
     use_linc = _OPT_KEY_USE_LINC_EXPLICITLY in circ_profile_config
+    reject_linear = _OPT_KEY_REJECT_LINEAR in circ_profile_config
 
     # assign file path
     spliced_linear_reference = os.path.join(output_path, "ref_linear.fa")
@@ -184,8 +198,9 @@ def main(path_config, forced_refresh=False):
     k = __determine_kmer_length(circ_profile_config)
 
     # 1st, extract the linear sequence
-    if not os.path.exists(spliced_linear_reference) or forced_refresh:
-        _prepare_linear_transcriptome(genome_fa, genomic_annotation, spliced_linear_reference)
+    if not reject_linear:
+        if not os.path.exists(spliced_linear_reference) or forced_refresh:
+            _prepare_linear_transcriptome(genome_fa, genomic_annotation, spliced_linear_reference)
 
     # 2nd, get the circular RNA gtf sequences
 
@@ -214,8 +229,8 @@ def main(path_config, forced_refresh=False):
 
     # ###### ========================================================
     # process additional reference . including linc and custom circular RNA 18-12-21
-    lst_reference_fa = [spliced_linear_reference, circ_reference_seq]
-    lst_annotation = [genomic_annotation, circular_rna_gtf]
+    lst_reference_fa = [circ_reference_seq] if reject_linear else [spliced_linear_reference, circ_reference_seq]
+    lst_annotation = [circular_rna_gtf] if reject_linear else [genomic_annotation, circular_rna_gtf]
 
     if additional_linear_ref and os.path.exists(additional_linear_ref):
         lst_reference_fa.append(additional_linear_ref)
