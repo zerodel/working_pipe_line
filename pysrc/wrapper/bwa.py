@@ -13,9 +13,9 @@ import pysrc.body.cli_opts
 import pysrc.body.option_check
 import pysrc.body.utilities
 import pysrc.body.worker
-import pysrc.file_format
+import pysrc.file_format.fq
 import pysrc.wrapper
-from pysrc.wrapper.ciri2 import BWA_T_SHORT_READS, BWA_T_LONGER_60BP
+import pysrc.body.logger
 
 __doc__ = ''' this is the wrapper of BWA aligner , it contains two phase: 1. index 2. align
 '''
@@ -38,6 +38,10 @@ _SUFFIX_INDEX = [
     ".pac",
     ".sa",
 ]
+
+BWA_T_SHORT_READS_CIRI, BWA_T_LONGER_60BP_CIRI = "15", "19"
+
+_logger = pysrc.body.logger.default_logger("BWA")
 
 
 def _get_cmd_align_with_target_file(opt_align):
@@ -178,11 +182,16 @@ def align(para_config=None, **kwargs):
 
     cmd, output = _get_cmd_align_with_target_file(align_phrase_options)
 
+    _logger.debug("bwa command : {cmd}\nbwa target: {output}".format(cmd=cmd, output=output))
+
+
+    # dump sam format alignment .
     if output:
         with open(output, "w") as alignment_file:
             bwa_cmd = pysrc.body.worker.Cmd(cmd, target_file=alignment_file)
             bwa_cmd.run()
     else:
+        _logger.warning("NO ALIGNMENT FILE ! MAY CAUSE ERROR")
         bwa_cmd = pysrc.body.worker.Cmd(cmd)
         bwa_cmd.run()
 
@@ -224,7 +233,7 @@ def bwa_mapping_ciri_only(meta_setting, **kwargs):
 
     # determine bwa score, 19 for normal data, 15 for short data.
     bwa_score_cutoff_given = meta_setting.get("bwa_score", None)
-    bwa_score_cutoff_default = BWA_T_SHORT_READS if read_length < 60 else BWA_T_LONGER_60BP
+    bwa_score_cutoff_default = BWA_T_SHORT_READS_CIRI if read_length < 60 else BWA_T_LONGER_60BP_CIRI
     bwa_score_cutoff = bwa_score_cutoff_given if bwa_score_cutoff_given else bwa_score_cutoff_default
 
     align(para_config={
@@ -234,7 +243,6 @@ def bwa_mapping_ciri_only(meta_setting, **kwargs):
         "-T": bwa_score_cutoff,
         "-t": str(core_used),  # todo: here we use all the cpu cores, greedy...
     }, output=sam)
-
 
 
 if __name__ == "__main__":

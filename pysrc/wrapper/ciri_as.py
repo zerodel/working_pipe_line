@@ -22,7 +22,7 @@ __author__ = 'zerodel'
 
 SECTION_DETECT = "CIRI_AS"
 
-#_ESSENTIAL_ARGUMENTS = ["--sam", "--ciri", "--out", "--ref_dir", "--ref_file", "--anno", "--log"]
+# _ESSENTIAL_ARGUMENTS = ["--sam", "--ciri", "--out", "--ref_dir", "--ref_file", "--anno", "--log"]
 
 _ARGUMENT_ORDER = ["--sam", "--ciri", "--out", "--ref_dir", "--ref_file", "--anno", "--output_all", "--log"]
 

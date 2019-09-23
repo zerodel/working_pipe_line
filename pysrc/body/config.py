@@ -12,7 +12,6 @@ except ImportError:
 
 import pysrc.body.logger
 
-
 __doc__ = ''' read .ini format config file,
 '''
 
@@ -33,6 +32,7 @@ def _get_parser(is_case_sensitive=True, **kwargs):
     if is_case_sensitive:
         my_parser.optionxform = str
     return my_parser
+
 
 #
 # def as_dict(parser):
@@ -95,38 +95,32 @@ def as_dict(config_object):
     return dd
 
 
-def load_or_update_option_section(cfg, your_section):
+def load_or_update_option_section(your_section, cfg=None):
     section_user = None
     section_default = None
 
-    if cfg:
-        user_config = config(cfg)
-        if your_section in user_config:
-            section_user = dict(user_config[your_section])
-    else:
-        _logger.warning(
-            "this section: {section} is empty in your configure file: {cfg_file}".format(
-                section=your_section,
-                cfg_file=cfg))
-
     default_config = load_default_value()
+
     if your_section in default_config:
         section_default = dict(default_config[your_section])
 
-    if section_user and section_default:
+    if not cfg:
+        _logger.warning("No configure file given , use default")
+        return section_default
+
+    user_config = config(cfg)
+    if your_section in user_config:
+        section_user = dict(user_config[your_section])
+
+    if section_user:
         section_default.update(section_user)
         _logger.debug("section updated by user config: {}".format(your_section))
         return section_default
-    else:
-        if section_user:
-            _logger.debug("using only user config: {}".format(your_section))
-            return section_user
-        elif section_default:
-            _logger.debug("using only default config: {}".format(your_section))
-            return section_default
-        else:
-            raise ValueError(
-                "can not find this section :{},  in both default and user config files".format(your_section))
+
+    if not section_default and not section_user:
+        _logger.error(
+            "can not find this section :{},  in both default and user config files".format(your_section))
+        return None
 
 
 def throw_out_where_the_default_config_is():

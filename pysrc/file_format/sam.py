@@ -3,7 +3,7 @@
 # author : zerodel
 # Readme:
 #
-# todo: need to convert sam to fastq
+
 import os
 
 import pysrc.body.logger

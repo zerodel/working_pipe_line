@@ -19,6 +19,7 @@ import pysrc.wrapper.ciri
 import pysrc.wrapper.ciri2
 import pysrc.wrapper.ciri_as
 import pysrc.wrapper.knife
+import pysrc.wrapper.ciri_full
 
 _OPT_FINAL_BED_OUT = "bed_output"
 
@@ -30,6 +31,7 @@ __TOOL_CIRI_AS = "ciri_as"
 
 __TOOL_CIRI = "ciri"
 
+__TOOL_CIRI_FULL = "ciri_full"
 
 __TOOL_BWA = "bwa"
 
@@ -40,9 +42,10 @@ available_tools = {
     __TOOL_CIRI: pysrc.wrapper.ciri2,
     __TOOL_CIRI_AS: pysrc.wrapper.ciri_as,
     __TOOL_KNIFE: pysrc.wrapper.knife,
+    __TOOL_CIRI_FULL: pysrc.wrapper.ciri_full
 }
 
-__tools_for_detection = [__TOOL_CIRI, __TOOL_CIRI_AS, __TOOL_KNIFE]
+__tools_for_detection = [__TOOL_CIRI, __TOOL_CIRI_AS, __TOOL_KNIFE, __TOOL_CIRI_FULL]
 
 __doc__ = ''' top level interface of circRNA detection workflow.\n
 choose detector:  '{key_global}' in section [{section_name}]\n
@@ -96,7 +99,7 @@ def __cli_arg_parser():
 def main(cfg):
     _logger.info("circRNA Detecting starting\n" + "configure is a {} , and content is {}".format(type(cfg), str(cfg)))
 
-    detect_option_section = pysrc.body.config.load_or_update_option_section(cfg, SECTION_CIRC_DETECTION)
+    detect_option_section = pysrc.body.config.load_or_update_option_section(SECTION_CIRC_DETECTION, cfg)
     opt_checker.check(copy.copy(detect_option_section))
 
     detector_names = pysrc.body.cli_opts.extract_entries_from_value_str(detect_option_section[_OPT_DETECTOR])
@@ -143,7 +146,7 @@ def _detect_by(cfg, name_of_detector):
     if name_of_detector not in available_tools:
         raise KeyError("Error: no such circular RNA detection tool : {}".format(name_of_detector))
     detector = available_tools[name_of_detector]
-    config_detector = pysrc.body.config.load_or_update_option_section(cfg, detector.SECTION_DETECT)
+    config_detector = pysrc.body.config.load_or_update_option_section(detector.SECTION_DETECT, cfg)
 
     _logger.info("content of detector is =====\n{}\n".format(str(config_detector)))
 

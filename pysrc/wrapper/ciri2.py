@@ -23,7 +23,8 @@ import pysrc.wrapper.ciri
 BWA_T_LONGER_60BP = "19"
 BWA_T_SHORT_READS = "15"
 
-__doc__ = ''' this is the wrapper of CIRI version 1, it contains one phase: detection
+__doc__ = ''' this is the wrapper of CIRI version 2, it contains one phase: detection
+but it is abandoned since 19-03-13
 '''
 
 __author__ = 'zerodel'
@@ -41,8 +42,8 @@ _OPT_REF_DIR = "--ref_dir"
 _OPT_REF_FILE = "--ref_file"
 _OPT_SHOW_ALL = "--no_strigency"
 
-BWA_T_LONGER_60BP = BWA_T_LONGER_60BP
-BWA_T_SHORT_READS = BWA_T_SHORT_READS
+# BWA_T_LONGER_60BP = BWA_T_LONGER_60BP
+# BWA_T_SHORT_READS = BWA_T_SHORT_READS
 
 _ESSENTIAL_ARGUMENTS = [_OPT_INPUT, _OPT_OUTPUT, _OPT_REF_FILE, _OPT_ANNOTATION]
 
@@ -174,6 +175,8 @@ def detect(par_dict=None, **kwargs):
         _logger.debug("already have alignment file at {path_to_align_file}".format(path_to_align_file=opts.get(
             _OPT_INPUT, "")))
     else:
+        _logger.debug("no alignment file ,  mapping using bwa")
+
         if reads:
             try:
                 map_job_setting = {
@@ -189,6 +192,8 @@ def detect(par_dict=None, **kwargs):
                 _logger.info("bwa mapping with parameter: %s" % str(map_job_setting))
 
                 pysrc.wrapper.bwa.bwa_mapping_ciri_only(map_job_setting)  # perform the mapping using bwa
+                _logger.debug("mapping completed")
+
             except Exception as e:
                 _logger.error(" ERROR occurs during preparing the SAM file for CIRI")
                 raise e  # no idea how to handle it

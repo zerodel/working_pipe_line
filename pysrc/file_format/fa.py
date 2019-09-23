@@ -52,3 +52,26 @@ def pad_for_effective_length(length_needed):
 def is_fasta(ref_path):
     basename, extension_with_dot = os.path.splitext(ref_path)
     return extension_with_dot in pysrc.file_format.fa.FASTA_FILE_EXTENSION
+
+
+def incremental_updating(target_fa, list_of_fa_file):
+    if list_of_fa_file:
+        _logger.debug("we will combine the following files : {}".format('\n'.join(list_of_fa_file)))
+        whole_dict_fa = {}
+        for single_fa_file in list_of_fa_file:
+            if not os.path.exists(single_fa_file):
+                _logger.warning("WARNING: not valid fa file: {}".format(single_fa_file))
+
+            else:
+                for x in Bio.SeqIO.parse(single_fa_file, "fasta"):
+                    whole_dict_fa[x.id.strip()] = str(x.seq).strip()
+
+        # output to target_fa,
+        with open(target_fa, "a") as dump_fa:
+            for x in whole_dict_fa:
+                dump_fa.write(">{name}\n{sequence}\n".format(name=x,
+                                                             sequence=whole_dict_fa[x]))
+    else:
+        _logger.warning("list contains no fa file , so no action taken ")
+        import pathlib
+        pathlib.Path(target_fa).touch()

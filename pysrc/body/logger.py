@@ -6,6 +6,8 @@
 
 import logging
 import os
+import time
+import datetime
 
 __doc__ = '''
 '''
@@ -37,3 +39,14 @@ def set_logger_file(logger, log_file, file_default="top_level.log"):
     path_abs = os.path.abspath(os.curdir)
     log_file_path = log_file if log_file else os.path.join(path_abs, file_default)
     return log_to_file(logger, log_file_path)
+
+
+def raw_timestamp():
+    x = datetime.datetime.now()
+    return "{year}_{month}_{day}_{hour}_{minute}_{second}_{misec}".format(year=x.year,
+                                                                          month=x.month,
+                                                                          day=x.day,
+                                                                          hour=x.hour,
+                                                                          minute=x.minute,
+                                                                          second=x.second,
+                                                                          misec=x.microsecond)

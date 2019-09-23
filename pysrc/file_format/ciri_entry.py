@@ -35,7 +35,6 @@ slots_v2 = [x.strip("#") for x in HEADER_v2.split()]
 
 
 # CIRI2 = collections.namedtuple("CIRI2", slots_v2)
-# todo: still need tweaking .
 class CIRI2(object):
     def __init__(self, dict_input):
         self.__dict__.update(dict_input)
@@ -48,15 +47,25 @@ class CIRIEntry(object):
         
         """
         if str_line:
+
             line_parts = str_line.strip().split("\t")
+
+            if 1 == len(line_parts):
+                _logger.warning("this ciri line is not separated by tab : {}".format(str_line))
+                line_parts = str_line.strip().split()
+                _logger.debug("now it has {} parts ".format(len(line_parts)))
+
             if len(line_parts) == len(slots_v1):  # v1
                 # self.obj = CIRI1(**dict(zip(slots_v1, line_parts)))
                 self.obj = CIRI1(dict(zip(slots_v1, line_parts)))
+                self.obj.strand = None
+
             elif len(line_parts) == len(slots_v2):  # v2
                 # self.obj = CIRI2(**dict(zip(slots_v2, line_parts)))
                 self.obj = CIRI2(dict(zip(slots_v2, line_parts)))
             else:
-                raise ValueError("Error: wrong CIRI format in : {}".format(line_parts[0]))
+                _logger.error("this line has {} parts".format(len(line_parts)))
+                raise ValueError("Error:wrong CIRI format in : {}".format(str_line))
         else:
             raise ValueError("Error: empty line ")
 
@@ -114,3 +123,19 @@ def transform_ciri_to_bed(ciri_output_file, num_read_lower_limit=JUNCTION_READS_
                     exporter.write(new_bed_line + "\n")
                 else:
                     _logger.warning("encounter a dis-qualified entry at %s" % str(ciri_line_entry))
+
+
+CIRC_REPORT_TABLE_HEADER_FIRST = "circRNA_ID"
+
+
+def is_ciri_file_intact(ciri_file):
+    if os.path.exists(ciri_file):
+        last_line_ciri_report = os.popen("tail -n 1 {}".format(ciri_file)).read().strip()
+        if len(last_line_ciri_report) > 5:
+            head_ciri_line = last_line_ciri_report.split()[0].strip()
+            tail_ciri_line = last_line_ciri_report[-1]
+
+            if not head_ciri_line == CIRC_REPORT_TABLE_HEADER_FIRST and tail_ciri_line == ",":
+                return True
+
+    return False

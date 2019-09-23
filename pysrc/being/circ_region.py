@@ -38,8 +38,6 @@ class RegionCirc(object):
                                                                          )
 
     def parse_id_str(self, id_str):
-        # todo : here should be re-writen using regex
-
         if "@" in id_str:
             id_segments = id_str.strip().split("@")
             region_str = id_segments[0]

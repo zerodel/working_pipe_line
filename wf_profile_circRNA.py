@@ -23,6 +23,7 @@ import pysrc.sub_module.summary_quant
 import pysrc.wrapper.gffread
 import pysrc.wrapper.sailfish
 import pysrc.wrapper.salmon
+import pysrc.wrapper.ciri_full
 from pysrc.body.cli_opts import catch_one
 
 _SUB_DIR_PROFILE_RESULT = "profile_result"
@@ -36,6 +37,7 @@ _OPT_VALUE_SAILFISH = "sailfish"
 _OPT_KEY_QUANTIFIER = "quantifier"
 
 _OPT_KEY_ADDITIONAL_CIRC_REF = "additional_circ_ref"
+
 _OPT_KEY_ADDITIONAL_LINEAR_REF = "additional_linear_ref"
 
 _OPT_KEY_ADDITIONAL_ANNOTATION = "additional_annotation"
@@ -81,25 +83,16 @@ def _option_check_main_interface(opts=None):
                         "path to gene annotation file, ie, .gtf or .gff files")
 
     oc.one_and_only_one(["-c", "--ciri_bsj", "--bed"], os.path.exists,
-                        FileNotFoundError("Error@circular_RNA_profiling: can not find circular report file "),
-                        "path to  circRNA detection report to specify circular RNA")
+                        FileNotFoundError("Error@circular_RNA_profiling: can not find circular detection report"),
+                        "path to  circRNA detection (file for ciri, folder for ciri-full) to specify circular RNA")
 
     oc.may_need(_OPT_CIRI_AS_OUTPUT_PREFIX, pysrc.body.cli_opts.is_suitable_path_with_prefix,
                 FileNotFoundError("Error@circular_RNA_profiling: incorrect circular Alternative Splice file prefix"),
                 "path prefix to CIRI-AS report of circular exons")
 
     # make sure the path should be a folder
-    def make_sure_there_is_a_folder(x):
-        try:
-            if not os.path.isdir(x):
-                os.mkdir(x)
-            if os.path.exists(x) and os.path.isdir(x):
-                return True
-        except Exception as e:
-            return False
-        return False
 
-    oc.must_have("-o", make_sure_there_is_a_folder,
+    oc.must_have("-o", pysrc.body.utilities.make_sure_there_is_a_folder,
                  FileNotFoundError("Error@circular_RNA_profiling: no place for output"),
                  "output folder that contains the index built by sailfish and quantification results")
 
@@ -203,12 +196,13 @@ def main(path_config, forced_refresh=False):
     if not reject_linear:
         if not os.path.exists(spliced_linear_reference) or forced_refresh:
             _prepare_linear_transcriptome(genome_fa, genomic_annotation, spliced_linear_reference)
+            _logger.debug("linear RNA from Genomic Sequence is included")
 
     # 2nd, get the circular RNA gtf sequences
-
+    circular_detection_not_only_bsj = os.path.isdir(circ_detection_report)
     if not os.path.exists(circular_rna_gtf) or forced_refresh:
-        _prepare_circular_rna_annotation(circ_detection_report, circ_profile_config, circular_rna_gtf,
-                                         genomic_annotation)
+        _prepare_circular_rna_annotation(circ_detection_report, circular_rna_gtf, genomic_annotation,
+                                         circular_detection_not_only_bsj)
 
     # 3rd, extracts circular RNA sequence
     _seq_extractor.do_extract_non_coding_transcript(gff=circular_rna_gtf,
@@ -231,11 +225,29 @@ def main(path_config, forced_refresh=False):
 
     # ###### ========================================================
     # process additional reference . including linc and custom circular RNA 18-12-21
+
+    # todo: we should consider if there are multiple additional reference sequence
     lst_reference_fa = [circ_reference_seq] if reject_linear else [spliced_linear_reference, circ_reference_seq]
     lst_annotation = [circular_rna_gtf] if reject_linear else [genomic_annotation, circular_rna_gtf]
 
-    if additional_linear_ref and os.path.exists(additional_linear_ref):
-        lst_reference_fa.append(additional_linear_ref)
+    if additional_linear_ref:
+        lst_reference_fa.extend([single_fa for single_fa in additional_linear_ref.strip().split() if os.path.exists(
+            single_fa)])
+
+    if circular_detection_not_only_bsj:
+        _logger.debug("transform ciri_full rebuild fa file")
+
+        ciri_full_rebuild_fa_file = pysrc.wrapper.ciri_full.rebuild_fa_path_under(circ_detection_report)
+
+        ciri_full_rebuild_fa_with_short_name = pysrc.wrapper.ciri_full.summarize_rebuild_fa(
+            ciri_full_rebuild_fa_file, os.path.join(output_path, "ciri_full_renamed.fa"))
+        rebuild_fa_encoded = os.path.join(output_path, "rebuild_seq.fa")
+
+        pysrc.file_format.fa.convert_all_entries_in_fasta(fa_in=ciri_full_rebuild_fa_with_short_name,
+                                                          fa_out=rebuild_fa_encoded,
+                                                          convert_fun=pysrc.file_format.fa.pad_for_effective_length(
+                                                              mean_library_length))
+        lst_reference_fa.append(rebuild_fa_encoded)
 
     if additional_circ_ref:
         additional_circ_ref_decoded = os.path.join(output_path, "additional_circ_ref.fa")
@@ -262,7 +274,8 @@ def main(path_config, forced_refresh=False):
 
     # 5th , combined those fa files
     final_refer = os.path.join(output_path, "final.fa")
-    pysrc.body.utilities.do_merge_files(final_refer, lst_reference_fa)
+    # pysrc.body.utilities.do_merge_files(final_refer, lst_reference_fa)
+    pysrc.file_format.fa.incremental_updating(final_refer, lst_reference_fa)
 
     # linc RNA is already in original gtf file
     final_annotation = os.path.join(output_path, "final.gtf")
@@ -315,39 +328,37 @@ def main(path_config, forced_refresh=False):
     #     gtf_annotation=final_annotation)
 
 
-def _prepare_circular_rna_annotation(circ_detection_report, circ_profile_config, circular_rna_gtf, genomic_annotation):
-    folder_gtf, gtf_base_name = os.path.split(circular_rna_gtf)
+def _prepare_circular_rna_annotation(circ_detection_report, circular_rna_gtf, genomic_annotation,
+                                     detection_not_only_bsj):
+    if detection_not_only_bsj:
 
-    if _OPT_CIRI_AS_OUTPUT_PREFIX in circ_profile_config:
-        circ_as_file_prefix = catch_one(circ_profile_config, _OPT_CIRI_AS_OUTPUT_PREFIX)
-        isoform_gtf = os.path.join(folder_gtf, "isoform_" + gtf_base_name)
-        bsj_has_isoform = pysrc.file_format.ciri_as_to_gtf.transform_as_path_to_gtf_and_return_bsj_junctions(
-            circ_as_file_prefix, isoform_gtf)
+        dir_par = os.path.dirname(circular_rna_gtf)
 
-        bed_this = os.path.join(folder_gtf, "detection_raw.bed")
+        _logger.debug("building circRNA using comprehensive information (ciri-full), under :{}".join(circular_rna_gtf))
 
-        if not circ_detection_report.endswith(".bed"):
-            _logger.info(" we treat circRNA identification report as a CIRI output : {file_circ_report}".format(
-                file_circ_report=circ_detection_report))
-            pysrc.file_format.ciri_entry.transform_ciri_to_bed(circ_detection_report, bed_this)
-        else:
-            shutil.copy(circ_detection_report, bed_this)
+        ciri_full_list_file = pysrc.wrapper.ciri_full.vis_list_path_under(circ_detection_report)
 
-        bed_filtered = os.path.join(folder_gtf, "ambiguous.bed")
-        with open(bed_filtered, "w") as to_bed:
-            with open(bed_this) as from_bed:
-                for line in from_bed:
-                    id_this_line = line.strip().split("\t")[3].strip()
-                    if id_this_line not in bsj_has_isoform:
-                        to_bed.write("%s\n" % line.strip())
+        ciri_report_path = pysrc.wrapper.ciri_full.ciri_report_under(circ_detection_report)
 
-        tmp_gtf = os.path.join(folder_gtf, "ambiguous.gtf")
-        _gtf_operator.do_make_gtf_for_circular_prediction_greedy(circular_candidate_regions=bed_filtered,
-                                                                 gff_db=genomic_annotation,
-                                                                 output_gtf_path_name=tmp_gtf)
-        pysrc.body.utilities.do_merge_files(circular_rna_gtf, (isoform_gtf, tmp_gtf))
+        _logger.debug("first, we need BSJ information in {}".format(ciri_report_path))
+        bed_bsj_only = pysrc.wrapper.ciri_full.filter_out_un_touched_circular_rna(ciri_report_path,
+                                                                                  ciri_full_list_file, tmp_dir=dir_par)
+
+        bsj_only_gtf = os.path.join(dir_par, "bsj_only.gtf")
+        _logger.debug("annotation for BSJ only will be put in : {}".format(bsj_only_gtf))
+        _logger.debug("genomic annotation source is from : {} . ".format(genomic_annotation))
+        _gtf_operator.do_make_gtf_for_circular_prediction_greedy(bed_bsj_only, genomic_annotation, bsj_only_gtf)
+
+        partial_gtf = os.path.join(dir_par, "partial_structure.gtf")
+        _logger.debug("circular RNA with partial structure information is in {}".join(partial_gtf))
+        pysrc.wrapper.ciri_full.summarize_circ_rna_structure_aftermath(ciri_full_list_file, genomic_annotation,
+                                                                       partial_gtf, dir_par)
+
+        pysrc.body.utilities.do_merge_files(circular_rna_gtf, [bsj_only_gtf, partial_gtf])
+        _logger.debug("the final circular exclusive annotation file is : {} ".format(circular_rna_gtf))
 
     else:
+        _logger.debug("building circRNA GTF using BSJ information only")
         _gtf_operator.do_make_gtf_for_circular_prediction_greedy(circular_candidate_regions=circ_detection_report,
                                                                  gff_db=genomic_annotation,
                                                                  output_gtf_path_name=circular_rna_gtf)
