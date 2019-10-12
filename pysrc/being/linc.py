@@ -16,7 +16,7 @@ __doc__ = '''this file contains utilities works for lincRNA functionality
 __author__ = 'zerodel'
 
 __ANNOTATION_SECTION_BIOTYPE = "gene_biotype"
-__BIOTYPE_STR_LINC = "lincRNA"
+__BIOTYPE_STR_LINC = ["lincRNA", "lncRNA"]
 
 __linc_sign = 'gene_biotype "lincRNA"'
 

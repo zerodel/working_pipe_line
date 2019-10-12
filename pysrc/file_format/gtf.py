@@ -270,7 +270,8 @@ def filter_gff_by_source(gff, bio_type):
             except AttributionIncomplete:
                 continue
             else:
-                if bio_type == this_entry.get_biotype():
+                # non-stable bio type name
+                if this_entry.get_biotype() in set(bio_type):
                     res.append(line)
     return res
 
