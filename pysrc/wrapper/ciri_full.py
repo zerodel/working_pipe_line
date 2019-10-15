@@ -306,7 +306,7 @@ def translate_vis_list(path_vis_list, tmp_dir=""):
 
     path_r_script = _find_that_r_script(BASE_NAME_R_SCRIPT_TRANSFORM_LIST)
 
-    _logger.debug("current path is {}".format(path_r_script))
+    _logger.debug("current path of external R script is {}".format(path_r_script))
 
     dir_par = tmp_dir if tmp_dir else os.path.dirname(path_vis_list)
 
@@ -419,12 +419,12 @@ def _bed2gtf(bed):
 
 def summarize_circ_rna_structure_aftermath(path_vis_list, genomic_gtf, summarized_gtf, tmp_dir=""):
 
-    bed_exon, bed_blank = translate_vis_list(path_vis_list, tmp_dir)
+    path_bed_circ_exon, path_bed_blank = translate_vis_list(path_vis_list, tmp_dir)
 
     import itertools
-    whole_exon_generator = itertools.chain(exons_within_blank_region(bed_blank, genomic_gtf),
+    whole_exon_generator = itertools.chain(exons_within_blank_region(path_bed_blank, genomic_gtf),
                                            exons_directly_from_bed_file(
-                                               bed_exon))
+                                               path_bed_circ_exon))
 
     pysrc.file_format.bsj_gtf.exons_to_gtf_file(whole_exon_generator, summarized_gtf)
 

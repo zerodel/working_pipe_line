@@ -119,8 +119,10 @@ class PredictedCircularRegion(object):
         for exon_locus in exon_filtered:
             exon_seqid, exon_source, exon_start, exon_end, exon_strand, exon_frame = exon_locus
 
-            transcript_id_show_strand = "%s.r" % transcript_id.strip() if exon_strand == "-" else \
-                transcript_id.strip()
+            # [2019_10_15 17:34], add .r only when the region strand is unclear and exon are on reverse strand
+            is_this_region_stand_clear = self.strand in {"+", "-"}
+            transcript_on_reverse_strand = exon_strand == "-" and not is_this_region_stand_clear
+            transcript_id_show_strand = "%s.r" % transcript_id.strip() if transcript_on_reverse_strand else transcript_id.strip()
 
             neo_isoform = self.generate_exon_for_circular_isoform(host_seqname=exon_seqid, start=exon_start,
                                                                   end=exon_end,
@@ -133,7 +135,6 @@ class PredictedCircularRegion(object):
 
     def mark_extracted_exons(self, dict_transcript_exon):
         # this function is after the extract_flanked.... function
-
         marked_exons = []
         for transcript_id in dict_transcript_exon.keys():
             for exon in dict_transcript_exon[transcript_id]:

@@ -5,11 +5,13 @@
 #' transform ciri-vis *.list file into exon bed files
 
 #' USAGE
-#' Rscript this.script path_to_ciri_vis.list path_to_export_bed
+#' Rscript this.script path_to_ciri_vis.list path_to_exon_bed path_to_empty_bed
 #' 
 #' ARGUMENTS
 #' path_to_ciri_vis.list : path to intermedian file under ciri-vis report folder
-#' path_to_export_bed : export result file path , in BED format except last column as host gene. 
+#' path_to_exon_bed : path to bed file contain KNOWN exons
+#' path_to_empty_bed: path to bed file contain "empty" regions
+
 
 # check dependency  and try install missing package -----------------------
 #' use base R , no additional package needed . 
@@ -98,11 +100,11 @@ count_of_occur <- function(x) {
 #' [1] FALSE FALSE  TRUE  TRUE  TRUE
 #'
 is_duplicate <- function(x) {
-  count_x <- table(x)
-  has_dup <- names(count_x)[count_x > 1]
-  return(x %in% has_dup)
+    x %in% base::unique(x[base::duplicated(x)])
+    # count_x <- table(x)
+    # has_dup <- names(count_x)[count_x > 1]
+    # return(x %in% has_dup)
 }
-
 
 start_of_region <- function(s) {
   as.numeric(base::regmatches(s, base::regexpr("^\\d+", s)))
@@ -241,9 +243,6 @@ empty_bed_path <- given_args[3]
 
 # loading files -----------------------------------------------------------
 
-
-# raw_lst_path <- "./intermediate_file/stout.list"
-
 cat(paste0("reading circ-full list file from ", raw_lst_path, "\n"))
 
 df_lst <- adhoc_load_list(raw_lst_path)
@@ -256,6 +255,8 @@ cat(paste0(
   " BSJs\n"
 ))
 
+df_lst$uid <- adhoc_unique_id_of(df_lst$bsj)
+
 df_partial_isoform <-
   base::subset(df_lst, df_lst$isoform_state == "Break")
 
@@ -266,7 +267,8 @@ if (dim(df_partial_isoform)[1] < 1) {
   cat("\n all your bsj sequence is intact, nothing to do here, quitting \n")
   
 } else{
-  df_partial_isoform$uid <- adhoc_unique_id_of(df_partial_isoform$bsj)
+    # [2019_10_15 18:28] we should make unique id before division
+#  df_partial_isoform$uid <- adhoc_unique_id_of(df_partial_isoform$bsj)
   cat(paste0("\n", "we need to serparate the verified exons and  0-0 empty region"))
   
   df_raw_region <-
