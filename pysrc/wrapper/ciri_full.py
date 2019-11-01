@@ -417,7 +417,7 @@ def _bed2gtf(bed):
     )
 
 
-def summarize_circ_rna_structure_aftermath(path_vis_list, genomic_gtf, summarized_gtf, tmp_dir=""):
+def summarize_circ_isoform_structure_marked_break(path_vis_list, genomic_gtf, summarized_gtf, tmp_dir=""):
 
     path_bed_circ_exon, path_bed_blank = translate_vis_list(path_vis_list, tmp_dir)
 

@@ -330,7 +330,7 @@ def main(path_config, forced_refresh=False):
 
 def _prepare_circular_rna_annotation(circ_detection_report, circular_rna_gtf, genomic_annotation,
                                      detection_not_only_bsj):
-    if detection_not_only_bsj:
+    if detection_not_only_bsj:  # this means use ciri-full as circRNA detection source.
 
         dir_par = os.path.dirname(circular_rna_gtf)
 
@@ -351,8 +351,8 @@ def _prepare_circular_rna_annotation(circ_detection_report, circular_rna_gtf, ge
 
         partial_gtf = os.path.join(dir_par, "partial_structure.gtf")
         _logger.debug("circular RNA with partial structure information is in {}".join(partial_gtf))
-        pysrc.wrapper.ciri_full.summarize_circ_rna_structure_aftermath(ciri_full_list_file, genomic_annotation,
-                                                                       partial_gtf, dir_par)
+        pysrc.wrapper.ciri_full.summarize_circ_isoform_structure_marked_break(ciri_full_list_file, genomic_annotation,
+                                                                              partial_gtf, dir_par)
 
         pysrc.body.utilities.do_merge_files(circular_rna_gtf, [bsj_only_gtf, partial_gtf])
         _logger.debug("the final circular exclusive annotation file is : {} ".format(circular_rna_gtf))
