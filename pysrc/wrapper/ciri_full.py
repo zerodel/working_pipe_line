@@ -5,6 +5,7 @@
 #
 from pysrc.body.utilities import safe_rename_with_postfix
 
+
 __author__ = 'zerodel'
 
 import os
@@ -429,13 +430,16 @@ def summarize_circ_isoform_structure_marked_break(path_vis_list, genomic_gtf, su
     pysrc.file_format.bsj_gtf.exons_to_gtf_file(whole_exon_generator, summarized_gtf)
 
 
-def _rename_rebuild_fa(fa_file_in):
+def _rename_rebuild_fa(fa_file_in, use_suffix=True):
     import Bio.SeqIO
     fa_in = Bio.SeqIO.parse(fa_file_in, "fasta")
+    __suffix_rebuild_fa = ".f"
 
     dict_fa_id = {}
     for seq in fa_in:
         short_id_isoform = seq.id.strip().split("#")[-1]
+        if use_suffix:  # 19_11_16 using .f to mark rebuild fa.
+            short_id_isoform = short_id_isoform + __suffix_rebuild_fa
 
         # in case there are multiple isoform under one BSJ
         if short_id_isoform not in dict_fa_id:
@@ -449,11 +453,11 @@ def _rename_rebuild_fa(fa_file_in):
         yield seq
 
 
-def summarize_rebuild_fa(fa_in, fa_out):
+def summarize_rebuild_fa(fa_in, fa_out, use_suffix=True):
     with open(fa_out, "w") as dump_it:
         dump_it.write("\n".join([">{fa_id}\n{fa_seq}".format(fa_id=seq.id.strip(),
                                                              fa_seq=seq.seq.strip())
-                                 for seq in _rename_rebuild_fa(fa_in)]))
+                                 for seq in _rename_rebuild_fa(fa_in, use_suffix)]))
     return fa_out
 
 

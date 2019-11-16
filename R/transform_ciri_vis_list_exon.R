@@ -270,6 +270,8 @@ cat(paste0(
     " BSJs\n"
 ))
 
+# parsing ciri_full list file  ====
+
 #df_lst$uid <- adhoc_unique_id_of(df_lst$bsj)
 df_lst <- add_unique_id(df_lst)
 
