@@ -493,15 +493,16 @@ write_csv <- function(obj.ini, path.to.export, use.abs = F) {
 
 # end of ini part ---------------------------------------------------------
 
+FQ_FILENAME_PATTERN_GZ <- "(\\.fq$)|(\\.fastq$)|(\\.fq.gz$)|(\\.fastq.gz$)"
 
-guess_sample_info <- function(abs.dir.fq.raw) {
+guess_sample_info <- function(abs.dir.fq.raw, pattern_fq_filename=FQ_FILENAME_PATTERN_GZ) {
     if (is.null(abs.dir.fq.raw)) {
         return(NULL)
     }
     abs.dir.fq <- gsub("\\/$", "", abs.dir.fq.raw)
     lst.fq <-
-        list.files(abs.dir.fq, pattern = "(\\.fq$)|(\\.fastq$)")
-    strip.fq.name <- gsub("(\\.fq$)|(\\.fastq$)", "", lst.fq)
+        list.files(abs.dir.fq, pattern = pattern_fq_filename)
+    strip.fq.name <- gsub(pattern_fq_filename, "", lst.fq)
     
     pe_num <-
         regmatches(strip.fq.name, regexec("\\d$", strip.fq.name))
@@ -540,8 +541,8 @@ mix_up_shell_content_this_sample <-
              path.workflow.quant) {
         c(
             "#! /usr/bin/env bash",
-            paste0("python3", path.workflow.detection, path.cfg, collapse = " "),
-            paste0("python3", path.workflow.quant, path.cfg, collapse = " ")
+            paste("python3", path.workflow.detection, path.cfg, sep = "\t"),
+            paste("python3", path.workflow.quant, path.cfg, sep = "\t")
         )
     }
 
@@ -561,14 +562,68 @@ write_the_shell_script <-
 
 # start the command args part -----------------------------------------------------
 
+STR_USAGE <-             "
 
-main <- function(template.path, cfg.dir, sh.dir = NULL) {
+usage:
+          Rscript make_serial_config.R template.path fq.dir cfg.dir sh.dir
+
+          template.path: file path of your config file template
+          
+          fq.dir: folder of fq files
+          
+          cfg.dir: path to a folder where to store generated config files
+          
+          sh.dir: optional , a folder to put you PBS shell scripts
+
+Notes:
+
+you need to specify 'pipeline_script_detection' and 'pipeline_script_profile' in META section of template file. 
+
+use abstract path to avoid potential error. 
+
+        
+            "
+
+
+main <- function(template.path, fq.dir, cfg.dir, sh.dir = NULL) {
     #' initialize the ini object and read the correct information from the
+    
+    if (is.na(template.path)) {
+        cat(STR_USAGE)
+        quit(save = "no")
+    }
+    
+    if (!dir.exists(fq.dir)) {
+        stop("NO FQ DIR!")
+    }
+    
+    if (!dir.exists(cfg.dir)) {
+        dir.create(cfg.dir)
+    }
+    
+    if (is.null(sh.dir) || is.na(sh.dir)) {
+        sh.dir <- cfg.dir
+        cat("sh file per sample would be in the same folder as cfg files\n")
+    }
+    
+    if (!dir.exists(sh.dir)) {
+        dir.create(sh.dir)
+    }
+    
+    
     ini.template <- read_ini(template.path)
     
-    dir_seq <- ini.template$GLOBAL$fq_dir
     detection.dir <-  ini.template$GLOBAL$detection_dir
+    if (!dir.exists(detection.dir)) {
+        cat(paste("\n create folder for detection : ", detection.dir, '\n'))
+        dir.create(detection.dir)
+    }
+    
     quantification.dir <- ini.template$GLOBAL$quant_root_dir
+    if (!dir.exists(quantification.dir)) {
+        cat(paste("\n create folder for quantification: ", quantification.dir), "\n")
+        dir.create(quantification.dir)
+    }
     
     #' get script path from the cfg file
     path.work.flow.detection <-
@@ -576,16 +631,16 @@ main <- function(template.path, cfg.dir, sh.dir = NULL) {
     path.work.flow.profile <-
         ini.template$META$pipeline_script_profile
     
-    stopifnot(file.exists(path.work.flow.detection))
-    stopifnot(file.exists(path.work.flow.profile))
     
-    if (is.null(sh.dir)) {
-        sh.dir <- cfg.dir
+    if (!file.exists(path.work.flow.detection)) {
+        stop("No valid detection workflow py file in template!")
     }
-    stopifnot(dir.exists(sh.dir))
-    stopifnot(dir.exists(cfg.dir))
     
-    lst.fq <- extract_seq_info(dir_seq)
+    if (!file.exists(path.work.flow.profile)) {
+        stop("No valid profile workflow py file in template!")
+    }
+    
+    lst.fq <- extract_seq_info(fq.dir)
     lst.shell.path <- NULL   #' for the main shell script
     
     for (sample.id in names(lst.fq)) {
@@ -646,8 +701,11 @@ main <- function(template.path, cfg.dir, sh.dir = NULL) {
         
     } # end of loop on each sample
     
+    
     #' write the main script for this serial samples.
-    path.to.main.shell <- paste0(dirname(sh.dir), "/", "main.sh")
+    path.to.main.shell <- paste0(dirname(sh.dir), "/", "batch.sh")
+    
+    cat(paste("\n", "path to batch shell: ", path.to.main.shell, "\n"))
     write_the_shell_script(path.to.main.shell,
                            mix_up_shell_content_main(lst.shell.path))
     
@@ -655,17 +713,16 @@ main <- function(template.path, cfg.dir, sh.dir = NULL) {
 }
 
 
-# test it -----------------------------------------------------------------
-
+# the real runing part -----------------------------------------------------------------
 
 cli_args = commandArgs(trailingOnly = T)
+
+
 template.path <- cli_args[1]
-cfg.dir <- cli_args[2]
+fq.dir <- cli_args[2]
+cfg.dir <- cli_args[3]
+sh.dir <- cli_args[4]
 
-if (length(cli_args) > 2) {
-    sh.dir <- cli_args[3]
-} else{
-    sh.dir <- NULL
-}
 
-main(template.path, cfg.dir, sh.dir)
+# be careful of user given arguments
+main(template.path, fq.dir, cfg.dir, sh.dir)
