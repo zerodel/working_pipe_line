@@ -495,7 +495,10 @@ write_csv <- function(obj.ini, path.to.export, use.abs = F) {
 
 FQ_FILENAME_PATTERN_GZ <- "(\\.fq$)|(\\.fastq$)|(\\.fq.gz$)|(\\.fastq.gz$)"
 
-guess_sample_info <- function(abs.dir.fq.raw, pattern_fq_filename=FQ_FILENAME_PATTERN_GZ) {
+FQ_FILENAME_PATTERN <- "(\\.fq$)|(\\.fastq$)"
+
+
+guess_sample_info <- function(abs.dir.fq.raw, pattern_fq_filename=FQ_FILENAME_PATTERN) {
     if (is.null(abs.dir.fq.raw)) {
         return(NULL)
     }
@@ -671,13 +674,15 @@ main <- function(template.path, fq.dir, cfg.dir, sh.dir = NULL) {
             ini.this$CIRI[["--seqs"]] = "${CUSTOM:r1} ${CUSTOM:r2}"
             ini.this$CIRC_PROFILE[["-1"]] = "${CUSTOM:r1}"
             ini.this$CIRC_PROFILE[["-2"]] = "${CUSTOM:r2}"
+            ini.this$CIRC_FULL[["-1"]] = "${CUSTOM:r1}"
+            ini.this$CIRC_FULL[["-2"]] = "${CUSTOM:r2}"
             
         } else {
             #' SE
             ini.this$CUSTOM$r1 = fq.sorted[1]
             ini.this$CIRI[["--seqs"]] = "${CUSTOM:r1}"
             ini.this$CIRC_PROFILE[["-r"]] = "${CUSTOM:r1}"
-            
+            ini.this$CIRC_FULL[["-r"]] = "${CUSTOM:r1}"
         }
         
         
