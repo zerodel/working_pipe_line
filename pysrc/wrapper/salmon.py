@@ -2,6 +2,11 @@
 # -*- coding:utf-8 -*-
 # author : zerodel
 # Readme:
+# ChangeLog:
+#
+# 2020-01-09: the main work-horse moved from sailfish to salmon, need to tweak the interface of it .
+# and current salmon version is : 1.1.0 (https://github.com/COMBINE-lab/salmon/releases)
+#
 #
 import copy
 import math
@@ -21,7 +26,6 @@ __author__ = 'zerodel'
 SECTION_INDEX = "SALMON_INDEX"
 SECTION_QUANTIFY = "SALMON_QUANTIFY"
 
-# SALMON version now is 0.7.1
 _FILES_IN_INDEX_FOLDER = ['hash.bin',
                           'header.json',
                           'indexing.log',
@@ -62,6 +66,8 @@ _OPT_UN_MATED_READS = "--unmatedReads"
 _OPT_MATE2 = "--mate2"
 
 _OPT_MATE1 = "--mate1"
+
+_OPT_KMER_LEN = "--kmerLen"
 
 _logger = pysrc.body.logger.default_logger("SALMON")
 
@@ -202,7 +208,9 @@ def _check_index_options(para_dict=None):
                          reduced names will be used in the output and when
                          looking for these transcripts in a gene to
                          transcript GTF.""")
-
+    opt_checker.may_need(_OPT_KMER_LEN, lambda x: int(x) > 0,
+                         ValueError("ERROR@SALMON_INDEX: invalid k-mer size given.... "),
+                         """This int confirms the length of k-mer,this would be"""),
     opt_checker.forbid_these_args("-h", "--help", "-v", "--version")
 
     return opt_checker
