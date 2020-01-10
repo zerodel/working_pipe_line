@@ -47,6 +47,8 @@ _ARGUMENT_ORDER = ["--sam", "--ciri", "--out", "--ref_dir", "--ref_file", "--ann
 
 _logger = pysrc.body.logger.default_logger(SECTION_DETECT)
 
+_OPT_SHOW_ALL = "--no_strigency"
+
 
 def _is_a_suitable_file_path(path_given):
     p_dir, p_file = os.path.split(path_given)
@@ -102,6 +104,10 @@ def _check_opts(opts=None):
     check_your_option.may_need("circ_fa", ut.is_path_creatable,
                                FileNotFoundError("Error@CIRI-full: given path is not valid for reconstructed fasta "
                                                  "file"), "path for reconstructed fa file ")
+    check_your_option.may_need(_OPT_SHOW_ALL, lambda x: True,
+                               ValueError("Error@CIRIFULL, you need a flag"),
+                               """a flag whether to show all possible BSJ"""
+                               )
     # check_your_option.must_have("--sam", os.path.exists,
     #                             FileNotFoundError(
     #                                 "Error: unable to find CIRI-full input sam file"),
@@ -166,6 +172,9 @@ def detect(para_config=None, **kwargs):
     ciri_args_dict["--ref_file"] = ref
     ciri_args_dict["--anno"] = anno
     ciri_args_dict["--thread_num"] = num_thread
+
+    if _OPT_SHOW_ALL in opts_raw:
+        ciri_args_dict[_OPT_SHOW_ALL] = ""
 
     # now run it
     _logger.debug("now detecting circular RNA using CIRI")

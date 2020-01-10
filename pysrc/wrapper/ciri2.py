@@ -125,6 +125,11 @@ def _check_opts(args_dict=None):
                 only bsj have more reads can be taken as a true positive """
                 )
 
+    oc.may_need(_OPT_SHOW_ALL, lambda x: True,
+                ValueError("ERROR@CIRI: whether to use no-stringency is a flag, No value needed"),
+                des_str="""a flag to decide whether all the possible BSJ should be shown 
+                in final CIRI detection report""")
+
     oc.forbid_these_args("--help", "-H")
 
     def _ciri_input_check(opts):
