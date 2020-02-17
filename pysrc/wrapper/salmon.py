@@ -100,6 +100,7 @@ def is_path_contain_index(possible_index_path):
 
 
 def _get_cmd_make_index(para_dict):
+    # warning : here lies a hard-coded name
     str_salmon_index_command = "{salmon_bin} index".format(salmon_bin=para_dict.pop(_SALMON_BIN))
     str_salmon_index_command += " " + pysrc.body.cli_opts.enum_all_opts(para_dict)
     return str_salmon_index_command

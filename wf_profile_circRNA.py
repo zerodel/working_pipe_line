@@ -162,6 +162,7 @@ def __determine_kmer_length(obj_circ_profile):
 
 
 def main(path_config, forced_refresh=False):
+    whole_config = pysrc.body.config.config(path_config)
     circ_profile_config = _load_to_update_default_options(path_config)
 
     _logger.debug("profile config dict is : %s" % str(circ_profile_config))
@@ -286,10 +287,12 @@ def main(path_config, forced_refresh=False):
 
     path_to_quantifier_index = os.path.join(output_path, _SUB_DIR_INDEX_FINAL)
 
-    index_parameters = {"--kmerSize": str(k),
+    index_parameters = {"sailfish_bin": whole_config["META"]["sailfish_bin"],
+                        "--kmerSize": str(k),
                         "--transcripts": final_refer,
                         "--out": path_to_quantifier_index
                         } if quantifier is pysrc.wrapper.sailfish else {
+        "salmon_bin": whole_config["META"]["salmon_bin"],
         "--kmerLen": str(k),
         "--transcripts": final_refer,
         "--index": path_to_quantifier_index,
@@ -302,7 +305,8 @@ def main(path_config, forced_refresh=False):
     if not os.path.exists(path_to_quantify_result):
         os.mkdir(path_to_quantify_result)
 
-    opts_quantifier = dict()
+    opts_quantifier = {"salmon_bin": whole_config["META"]["salmon_bin"]} if quantifier is pysrc.wrapper.salmon else {
+        "sailfish_bin": whole_config["META"]["sailfish_bin"]}
 
     opts_quantifier["--index"] = path_to_quantifier_index
     if "-1" and "-2" in circ_profile_config:

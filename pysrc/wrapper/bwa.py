@@ -203,7 +203,9 @@ def bwa_mapping_ciri_only(meta_setting, **kwargs):
         bwa_bin = meta_setting["bwa_bin"] if "bwa_bin" in meta_setting else kwargs.pop("bwa_bin")
     except KeyError:
         raise KeyError("Error@CIRI: no binary file for BWA aligner")
-
+    finally:
+        bwa_bin = "bwa"
+        _logger.warning('use bwa in PATH')
     try:
         index_bwa = meta_setting["bwa_index"] if "bwa_index" in meta_setting else kwargs.pop("bwa_index")
     except KeyError:

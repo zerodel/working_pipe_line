@@ -26,9 +26,11 @@ import pysrc.file_format.gtf
 
 import pysrc.wrapper.ciri2
 import pysrc.wrapper.ciri_as
+import pysrc.wrapper.bwa
 
 _OPT_CIRI_AS_PATH = "ciri_as_path"
 _OPT_CIRI_PATH = "ciri_path"
+_OPT_BWA_BIN = "bwa_bin"
 
 _OPT_JAR_FULL_PATH = "jar_full"
 _OPT_JAR_VIS_PATH = "jar_vis"
@@ -66,6 +68,10 @@ def _check_opts(opts=None):
                                 FileNotFoundError("Error: can not find CIRI script"),
                                 "path to CIRI script file ")
 
+    check_your_option.must_have(_OPT_BWA_BIN, os.path.exists,
+                                FileNotFoundError("Error: can not find bwa executive file"),
+                                "path to bwa binary")
+
     check_your_option.must_have(_OPT_JAR_VIS_PATH, os.path.exists,
                                 FileNotFoundError("Error: can not find CIRI-Vis jar file"),
                                 "path to CIRI_Vis.jar ")
@@ -100,6 +106,10 @@ def _check_opts(opts=None):
     check_your_option.may_need("-t", lambda x: isinstance(int(x), int),
                                TypeError("Error@CIRI-full , improper thread number given"),
                                "number of threads")
+
+    check_your_option.may_need("-T", lambda x: isinstance(int(x), int),
+                               TypeError("Error@CIRI-full , improper mapping threshold given"),
+                               "bwa mem mapping threshold, for human, 19 is ok, more sensitive for lower threshold")
 
     check_your_option.may_need("circ_fa", ut.is_path_creatable,
                                FileNotFoundError("Error@CIRI-full: given path is not valid for reconstructed fasta "
@@ -138,7 +148,11 @@ def detect(para_config=None, **kwargs):
 
     read_length = opts_raw.get("-l")
 
-    ciri_path, ciri_as_path = opts_raw.get(_OPT_CIRI_PATH), opts_raw.get(_OPT_CIRI_AS_PATH)
+    bwa_score = opts_raw.get("-T")
+
+    ciri_path, ciri_as_path, bwa_path = opts_raw.get(_OPT_CIRI_PATH), opts_raw.get(_OPT_CIRI_AS_PATH), opts_raw.get(
+        _OPT_BWA_BIN)
+
     jar_full, jar_vis = opts_raw.get(_OPT_JAR_FULL_PATH), opts_raw.get(_OPT_JAR_VIS_PATH)
     dir_out = opts_raw.get("-d")
     num_thread = opts_raw.get("-t", 1)
@@ -172,6 +186,7 @@ def detect(para_config=None, **kwargs):
     ciri_args_dict["--ref_file"] = ref
     ciri_args_dict["--anno"] = anno
     ciri_args_dict["--thread_num"] = num_thread
+    ciri_args_dict["bwa_score"] = bwa_score
 
     if _OPT_SHOW_ALL in opts_raw:
         ciri_args_dict[_OPT_SHOW_ALL] = ""
@@ -212,7 +227,23 @@ def detect(para_config=None, **kwargs):
     pysrc.body.worker.run(cmd_ro1)
 
     # phase RO2
-    cmd_ro2 = _get_cmd_ro2(jar_full, ref, sam_file, read_length, ciri_full_prefix)
+    fq_ro1 = ciri_full_prefix + "_ro1.fq"
+    sam_ro1 = ciri_full_prefix + "_ro1.sam"
+
+    mapping_job_setting = {
+        "bwa_bin": bwa_path,
+        "bwa_index": ref,
+        "read_file": fq_ro1,
+        "sam": sam_ro1,
+        "thread_num": num_thread
+    }
+
+    _logger.info("bwa mapping for RO2 with parameter: %s" % str(mapping_job_setting))
+
+    pysrc.wrapper.bwa.bwa_mapping_ciri_only(mapping_job_setting)  # perform the mapping using bwa
+    _logger.debug("mapping completed")
+
+    cmd_ro2 = _get_cmd_ro2(jar_full, ref, sam_ro1, read_length, ciri_full_prefix)
     _logger.debug("command RO2 of ciri-full is {cmd_ro2}".format(cmd_ro2=cmd_ro2))
     pysrc.body.worker.run(cmd_ro2)
 

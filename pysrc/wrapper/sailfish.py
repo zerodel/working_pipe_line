@@ -90,6 +90,7 @@ def is_path_contain_index(supposed_path_to_index):
 
 
 def get_cmd_make_index(para_dict):
+    # warning: hard coded here
     cmd_sailfish_index = "{sailfish_bin} index".format(sailfish_bin=para_dict.pop(_SAILFISH_BIN))
     cmd_sailfish_index += " " + pysrc.body.cli_opts.enum_all_opts(para_dict)
     return cmd_sailfish_index

@@ -68,14 +68,13 @@ def update_parameters(para_default, para_cli, para_conf):
 # todo: [2017_11_06 15:45] seems this will cause an bug :
 # when your want to update the parameters in a new config file , it wont work as you expected
 # it ignored META and GLOBAL in the newer config file
-def merge_parameters(kwargs, para_config, config_section):
-    load_setting = pysrc.body.config.load_default_value()
-    updated_para = dict(load_setting[config_section]) if config_section in load_setting else {}
-
-    if para_config:
-        updated_para = update_parameters(updated_para,
-                                         para_config,
-                                         kwargs)
+def merge_parameters(kwargs, parameters_custom, section_name_in_config):
+    config_default = pysrc.body.config.load_default_value()
+    # parameters_custom = config_custom[section_name_in_config] if section_name_in_config in config_custom else {}
+    parameters_default = dict(config_default[section_name_in_config]) if section_name_in_config in config_default else {}
+    updated_para = update_parameters(parameters_default,
+                                     parameters_custom,
+                                     kwargs) if parameters_custom else parameters_default
     return updated_para
 
 

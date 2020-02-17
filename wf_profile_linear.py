@@ -15,7 +15,7 @@ _OPT_KEY_QUANTIFIER = "quantifier"
 
 _OPT_KEY_MAPPER = "mapper"
 
-_QUANTIFIERS_DO_NOT_NEED_EXTERNAL_MAPPER = ["sailfish"]
+_QUANTIFIERS_DO_NOT_NEED_EXTERNAL_MAPPER = ["sailfish", "salmon"]
 
 __doc__ = '''top level workflow for linear RNA profiling,
 associated key: {key_in_global} in [GLOBAL],
@@ -28,10 +28,10 @@ def main(path_config=""):
     user_config_whole = pysrc.body.config.config(
         path_config) if path_config else pysrc.body.config.load_default_value()
 
-    quantifier = get_value_from_GLOBAL_section(user_config_whole, _OPT_KEY_QUANTIFIER)
+    quantifier = get_value_from_global_section(user_config_whole, _OPT_KEY_QUANTIFIER)
 
     if _is_this_quantifier_need_external_mapper(quantifier):
-        align.work(user_config_whole, get_value_from_GLOBAL_section(user_config_whole, _OPT_KEY_MAPPER))
+        align.work(user_config_whole, get_value_from_global_section(user_config_whole, _OPT_KEY_MAPPER))
 
     quantify.work(user_config_whole, quantifier)
 
@@ -41,7 +41,7 @@ def _is_this_quantifier_need_external_mapper(name_quantifier):
     return name_quantifier.strip() not in _QUANTIFIERS_DO_NOT_NEED_EXTERNAL_MAPPER
 
 
-def get_value_from_GLOBAL_section(user_config_whole, key_name):
+def get_value_from_global_section(user_config_whole, key_name):
     if key_name in user_config_whole[pysrc.body.config.SECTION_GLOBAL]:
         return user_config_whole[pysrc.body.config.SECTION_GLOBAL][key_name]
     else:
