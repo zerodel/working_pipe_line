@@ -156,10 +156,10 @@ def _build_salmon_cmd_with_order_given(para_dict, priority_order, phase="quant")
 
 
 def _check_valid_index(path):
-    if os.path.exists(path) and os.path.isdir(path):
-        files = os.listdir(path)
-        return all([x in files for x in _FILES_IN_INDEX_FOLDER])
-    return False
+#    if os.path.exists(path) and os.path.isdir(path):
+#        files = os.listdir(path)
+#        return all([x in files for x in _FILES_IN_INDEX_FOLDER])
+    return os.path.exists(path) and os.path.isdir(path)
 
 
 def _is_legal_lib_type(str_lib_type):
