@@ -95,7 +95,7 @@ def _check_opts(opts=None):
                                 FileNotFoundError("Error@CIRI-full: genomic reference .fa file not found"),
                                 "genomic reference file")
 
-    check_your_option.must_have("-d", os.path.isdir,
+    check_your_option.must_have("-d", ut.is_path_a_legal_dir,
                                 NotADirectoryError("Error@CIRI-full: improper output directory given"),
                                 "path to output files")
 

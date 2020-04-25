@@ -154,7 +154,7 @@ def _build_salmon_cmd_with_order_given(para_dict, priority_order, phase="quant")
 
     return cmd_string
 
-
+#todo need a accurate way to check salmon index folder .
 def _check_valid_index(path):
 #    if os.path.exists(path) and os.path.isdir(path):
 #        files = os.listdir(path)

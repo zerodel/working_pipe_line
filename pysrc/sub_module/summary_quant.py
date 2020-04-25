@@ -234,7 +234,7 @@ def _load_or_update_transcript_ownership_relation(file_contains_info, func_to_pa
                     dict_gene_of_transcript[transcript_entry] = gene_entry
                     dict_transcripts_of_gene.setdefault(gene_entry, set()).add(transcript_entry)
                 else:
-                    _logger.logging("meet a line not containing all 3 info: %s" % single_line)
+                    _logger.debug("meet a line not containing all 3 info: %s" % single_line)
 
     return TranscriptOwnership(dd_gene_of=dict_gene_of_transcript, dd_transcripts_of=dict_transcripts_of_gene,
                                dd_type_of=dict_type_of_transcript)
@@ -246,7 +246,7 @@ def _parse_single_line_as_gtf(single_line):
         gene_id = entry.get_gene_id()
         transcript_id = entry.get_transcript_id()
     except:
-        _logger.logging("in complete gtf line: %s" % single_line)
+        _logger.debug("in complete gtf line: %s" % single_line)
         return None, None, None
     else:
 

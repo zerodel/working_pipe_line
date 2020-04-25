@@ -111,6 +111,15 @@ def is_path_exists_or_creatable(path_to_somewhere):
         return False
 
 
+def is_path_a_legal_dir(some_path):
+    import os.path
+    if os.path.exists(some_path):
+        return os.path.isdir(some_path)
+    else:
+        the_dir_name = os.path.dirname(some_path)
+        return os.path.isdir(the_dir_name) and os.path.exists(the_dir_name)
+
+
 class Bunch(dict):
     def __int__(self, *args, **kwargs):
         super(Bunch, self).__init__(*args, **kwargs)
