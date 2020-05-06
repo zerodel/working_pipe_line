@@ -135,8 +135,10 @@ def _check_opts(opts=None):
                                """a flag whether to show all possible BSJ"""
                                )
 
-    check_your_option.may_need("-min", lambda x: int(x) > 0, ValueError(
-        "Error@CIRIFULL, minimal expression should be a integer larger than 1", """ the minimal expression in step ciri-vis"""))
+    check_your_option.may_need("-min", lambda x: int(x) > 0,
+                               ValueError(
+                                   "Error@CIRIFULL, minimal expression should be a integer larger than 1"),
+                               """ the minimal expression in step ciri-vis""")
     # check_your_option.must_have("--sam", os.path.exists,
     #                             FileNotFoundError(
     #                                 "Error: unable to find CIRI-full input sam file"),
