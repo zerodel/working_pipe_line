@@ -50,7 +50,7 @@ _OPT_KEY_REJECT_LINEAR = "flag_reject_linear"
 _QUANTIFIER_BACKEND_OF = {"sailfish": pysrc.wrapper.sailfish,
                           "salmon": pysrc.wrapper.salmon}
 
-_OPT_KEY_DECOY_FILES = "--decoy"
+_OPT_KEY_DECOY_FILES = "--decoys"
 
 __doc__ = '''
 '''
