@@ -30,7 +30,7 @@ _FILES_IN_INDEX_FOLDER = ['hash.bin',
                           'header.json',
                           'indexing.log',
                           'quasi_index.log',
-                          #'refInfo.json',
+                          # 'refInfo.json',
                           'rsd.bin',
                           'sa.bin',
                           'txpInfo.bin',
@@ -73,7 +73,8 @@ _logger = pysrc.body.logger.default_logger("SALMON")
 
 
 def get_index_path(para_config=None, *args, **kwargs):
-    updated_para = pysrc.body.cli_opts.merge_parameters(kwargs, para_config, "SALMON_INDEX")
+    updated_para = pysrc.body.cli_opts.merge_parameters(
+        kwargs, para_config, "SALMON_INDEX")
     return updated_para["--out"]
 
 
@@ -88,7 +89,8 @@ def interpret_seq_files(input_files):
             raise TypeError(
                 "Error@SALMON_interpret_seq_file: only list and string are allowed in assign SALMON input_files")
     else:
-        raise FileNotFoundError("Error@SALMON_interpret_seq_file: seems that no input file is assigned")
+        raise FileNotFoundError(
+            "Error@SALMON_interpret_seq_file: seems that no input file is assigned")
 
 
 def is_path_contain_index(possible_index_path):
@@ -101,8 +103,10 @@ def is_path_contain_index(possible_index_path):
 
 def _get_cmd_make_index(para_dict):
     # warning : here lies a hard-coded name
-    str_salmon_index_command = "{salmon_bin} index".format(salmon_bin=para_dict.pop(_SALMON_BIN))
-    str_salmon_index_command += " " + pysrc.body.cli_opts.enum_all_opts(para_dict)
+    str_salmon_index_command = "{salmon_bin} index".format(
+        salmon_bin=para_dict.pop(_SALMON_BIN))
+    str_salmon_index_command += " " + \
+        pysrc.body.cli_opts.enum_all_opts(para_dict)
     return str_salmon_index_command
 
 
@@ -154,11 +158,13 @@ def _build_salmon_cmd_with_order_given(para_dict, priority_order, phase="quant")
 
     return cmd_string
 
-#todo need a accurate way to check salmon index folder .
+# todo need a accurate way to check salmon index folder .
+
+
 def _check_valid_index(path):
-#    if os.path.exists(path) and os.path.isdir(path):
-#        files = os.listdir(path)
-#        return all([x in files for x in _FILES_IN_INDEX_FOLDER])
+    #    if os.path.exists(path) and os.path.isdir(path):
+    #        files = os.listdir(path)
+    #        return all([x in files for x in _FILES_IN_INDEX_FOLDER])
     return os.path.exists(path) and os.path.isdir(path)
 
 
@@ -167,21 +173,29 @@ def _is_legal_lib_type(str_lib_type):
 
 
 def _check_index_options(para_dict=None):
-    opt_checker = pysrc.body.option_check.OptionChecker(para_dict, name=SECTION_INDEX)
+    opt_checker = pysrc.body.option_check.OptionChecker(
+        para_dict, name=SECTION_INDEX)
     opt_checker.one_and_only_one([_TRANSCRIPTS, "-t"], os.path.exists,
-                                 FileNotFoundError("Error@SALMON_INDEX: unable to find the transcript fa"),
+                                 FileNotFoundError(
+                                     "Error@SALMON_INDEX: unable to find the transcript fa"),
                                  "Transcript fasta file(s)")
 
     opt_checker.one_and_only_one(["-i", _INDEX], pysrc.body.cli_opts.is_suitable_path_with_prefix,
-                                 FileNotFoundError("Error@SALMON_INDEX: wrong path for index output"),
+                                 FileNotFoundError(
+                                     "Error@SALMON_INDEX: wrong path for index output"),
                                  "Output stem [all files needed by SALMON will be of the form stem.*].")
 
+    opt_checker.at_most_one(["-d", "--decoys"], lambda x: all([os.path.exists(y) for y in x.split()]),
+                            FileNotFoundError("ERROR@SALMON_INDEX: unable to find decoy sequences"), "path to decoy sequences")
+
     opt_checker.at_most_one([_THREADS, "-p"], lambda x: x.isdecimal() and 0 < int(x) <= 2,
-                            ValueError("ERROR@SALMON_INDEX: given incorrect threads number"),
+                            ValueError(
+                                "ERROR@SALMON_INDEX: given incorrect threads number"),
                             "The number of threads to use concurrently. default is the number of your cpu cores")
 
     opt_checker.may_need(_INDEX_TYPE, lambda x: x.strip() == "quasi",
-                         ValueError("ERROR@SALMON_INDEX: type of index is quasi , fmd will be removed"),
+                         ValueError(
+                             "ERROR@SALMON_INDEX: type of index is quasi , fmd will be removed"),
                          "The type of index to build")
 
     opt_checker.at_most_one(["-s", "--sasamp"], _is_legal_suffix_array_interval,
@@ -202,7 +216,8 @@ def _check_index_options(para_dict=None):
                          but will take longer to construct""")
 
     opt_checker.may_need(_GEN_CODE_FORMAT_FLAG, lambda x: not x,
-                         ValueError("ERROR@SALMON_INDEX: --gencode is only a flag , no value needed . "),
+                         ValueError(
+                             "ERROR@SALMON_INDEX: --gencode is only a flag , no value needed . "),
                          """This flag will expect the input transcript fasta
                          to be in GENCODE format, and will split the
                          transcript name at the first '|' character.  These
@@ -210,7 +225,8 @@ def _check_index_options(para_dict=None):
                          looking for these transcripts in a gene to
                          transcript GTF.""")
     opt_checker.may_need(_OPT_KMER_LEN, lambda x: int(x) > 0,
-                         ValueError("ERROR@SALMON_INDEX: invalid k-mer size given.... "),
+                         ValueError(
+                             "ERROR@SALMON_INDEX: invalid k-mer size given.... "),
                          """This int confirms the length of k-mer,this would be"""),
     opt_checker.forbid_these_args("-h", "--help", "-v", "--version")
 
@@ -218,16 +234,20 @@ def _check_index_options(para_dict=None):
 
 
 def _check_quantify_options_alignment_mode(para_dict=None):
-    opt_checker = pysrc.body.option_check.OptionChecker(para_dict, name=SECTION_QUANTIFY + "_ALIGNMENT_MODE")
+    opt_checker = pysrc.body.option_check.OptionChecker(
+        para_dict, name=SECTION_QUANTIFY + "_ALIGNMENT_MODE")
     opt_checker.one_and_only_one(["-a", _ALIGNMENTS], os.path.exists,
-                                 FileNotFoundError("ERROR@SALMON_QUANTIFY: incorrect alignment file given "),
+                                 FileNotFoundError(
+                                     "ERROR@SALMON_QUANTIFY: incorrect alignment file given "),
                                  "input alignment (BAM) file(s).")
 
     opt_checker.one_and_only_one(["-t", _TARGET_TRANSCRIPTS], os.path.exists,
-                                 FileNotFoundError("ERROR@SALMON_QUANTIFY: incorrect FASTA format file given"),
+                                 FileNotFoundError(
+                                     "ERROR@SALMON_QUANTIFY: incorrect FASTA format file given"),
                                  " FASTA format file containing target transcripts.")
 
-    opt_checker = _add_common_options_both_salmon_quantify_modes(opt_checker, para_dict)
+    opt_checker = _add_common_options_both_salmon_quantify_modes(
+        opt_checker, para_dict)
 
     opt_checker.forbid_these_args("-i", _INDEX)
 
@@ -236,15 +256,18 @@ def _check_quantify_options_alignment_mode(para_dict=None):
 
 def _add_common_options_both_salmon_quantify_modes(opt_checker, para_dict):
     opt_checker.one_and_only_one(["-l", _LIB_TYPE], _is_legal_lib_type,
-                                 KeyError("Error@SALMON_QUANTIFY: no suitable libtype for SALMON"),
+                                 KeyError(
+                                     "Error@SALMON_QUANTIFY: no suitable libtype for SALMON"),
                                  "Format string describing the library type")
 
     opt_checker.one_and_only_one(["-o", _QUANTIFY_OUTPUT], os.path.exists,
-                                 FileNotFoundError("ERROR@SALMON_QUANTIFY: incorrect path to SALMON output "),
+                                 FileNotFoundError(
+                                     "ERROR@SALMON_QUANTIFY: incorrect path to SALMON output "),
                                  "Output quantification file.")
 
     opt_checker.at_most_one([_GENE_MAPPING_FILE, "-g"], os.path.exists,
-                            FileNotFoundError("ERROR@SALMON_QUANTIFY: incorrect gene map file (gtf ,csv) given"),
+                            FileNotFoundError(
+                                "ERROR@SALMON_QUANTIFY: incorrect gene map file (gtf ,csv) given"),
                             """File containing a mapping of transcripts to genes.""")
 
     opt_checker.forbid_these_args("-h", "--help", "-v", "--version")
@@ -252,23 +275,34 @@ def _add_common_options_both_salmon_quantify_modes(opt_checker, para_dict):
 
 
 def _check_quantify_options_reads_mode(para_dict=None):
-    opt_checker = pysrc.body.option_check.OptionChecker(para_dict, name=SECTION_QUANTIFY + "_READS_MODE")
-    opt_checker = _add_common_options_both_salmon_quantify_modes(opt_checker, para_dict)
+    opt_checker = pysrc.body.option_check.OptionChecker(
+        para_dict, name=SECTION_QUANTIFY + "_READS_MODE")
+    opt_checker = _add_common_options_both_salmon_quantify_modes(
+        opt_checker, para_dict)
 
     opt_checker.one_and_only_one(["-i", _INDEX], _check_valid_index,
-                                 FileNotFoundError("ERROR@SALMON_QUANTIFY_reads_mode: incorrect index path given "),
+                                 FileNotFoundError(
+                                     "ERROR@SALMON_QUANTIFY_reads_mode: incorrect index path given "),
                                  "Salmon index")
 
     opt_checker.may_need(_OPT_UN_MATED_READS, os.path.exists,
-                         FileNotFoundError("ERROR@SALMON_QUANTIFY_reads_mode: incorrect single-end file"),
+                         FileNotFoundError(
+                             "ERROR@SALMON_QUANTIFY_reads_mode: incorrect single-end file"),
                          "un-mated, ie, single-end sequence reads file")
 
     opt_checker.may_need(_OPT_MATE1, os.path.exists,
-                         FileNotFoundError("ERROR@SALMON_QUANTIFY_reads_mode: incorrect paired-end mate1 file"),
+                         FileNotFoundError(
+                             "ERROR@SALMON_QUANTIFY_reads_mode: incorrect paired-end mate1 file"),
                          "paired-end sequence reads file: mate1")
     opt_checker.may_need(_OPT_MATE2, os.path.exists,
-                         FileNotFoundError("ERROR@SALMON_QUANTIFY_reads_mode: incorrect paired-end mate2 file"),
+                         FileNotFoundError(
+                             "ERROR@SALMON_QUANTIFY_reads_mode: incorrect paired-end mate2 file"),
                          "paired-end sequence reads file: mate2")
+    opt_checker.may_need("--validateMappings", lambda x: True,
+                         ValueError(
+                             "ERROR@SALMON_QUANTIFY_reads_mode: validation mapping"),
+                         "flag to increase accuracy. became a default after salmon 1.0 version")
+
     if para_dict:
         if _OPT_MATE1 in para_dict and _OPT_MATE2 in para_dict:
             if _OPT_UN_MATED_READS in para_dict:
@@ -294,11 +328,13 @@ opt_checker_index = _check_index_options()
 opt_checker_quantify_align = _check_quantify_options_alignment_mode()
 opt_checker_quantify_reads = _check_quantify_options_reads_mode()
 
-OPTION_CHECKERS = [opt_checker_index, opt_checker_quantify_reads, opt_checker_quantify_align]
+OPTION_CHECKERS = [opt_checker_index,
+                   opt_checker_quantify_reads, opt_checker_quantify_align]
 
 
 def index(para_config=None, *args, **kwargs):
-    opts_raw = pysrc.body.cli_opts.merge_parameters(kwargs, para_config, SECTION_INDEX)
+    opts_raw = pysrc.body.cli_opts.merge_parameters(
+        kwargs, para_config, SECTION_INDEX)
     opts = copy.copy(opts_raw)
 
     _check_index_options(opts)
@@ -311,7 +347,8 @@ def index(para_config=None, *args, **kwargs):
 
 
 def quantify(para_config=None, *args, **kwargs):
-    opts_raw = pysrc.body.cli_opts.merge_parameters(kwargs, para_config, SECTION_QUANTIFY)
+    opts_raw = pysrc.body.cli_opts.merge_parameters(
+        kwargs, para_config, SECTION_QUANTIFY)
     opts = copy.copy(opts_raw)
 
     para_dict = copy.copy(opts_raw)

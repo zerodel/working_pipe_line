@@ -50,6 +50,8 @@ _OPT_KEY_REJECT_LINEAR = "flag_reject_linear"
 _QUANTIFIER_BACKEND_OF = {"sailfish": pysrc.wrapper.sailfish,
                           "salmon": pysrc.wrapper.salmon}
 
+_OPT_KEY_DECOY_FILES = "--decoy"
+
 __doc__ = '''
 '''
 
@@ -62,73 +64,94 @@ _logger = pysrc.body.logger.default_logger(SECTION_PROFILE_CIRCULAR_RNA)
 
 def __cli_arg_parser():
     parser = argparse.ArgumentParser()
-    parser.add_argument("cfg_file", help="file path to a configuration file of detection job")
-    parser.add_argument("-l", "--log_file", help="logging file path", default="")
-    parser.add_argument("-f", "--force", help="forced refresh", action="store_true")
+    parser.add_argument(
+        "cfg_file", help="file path to a configuration file of detection job")
+    parser.add_argument("-l", "--log_file",
+                        help="logging file path", default="")
+    parser.add_argument(
+        "-f", "--force", help="forced refresh", action="store_true")
     return parser
 
 
 def _option_check_main_interface(opts=None):
-    oc = pysrc.body.option_check.OptionChecker(opts, name=SECTION_PROFILE_CIRCULAR_RNA)
+    oc = pysrc.body.option_check.OptionChecker(
+        opts, name=SECTION_PROFILE_CIRCULAR_RNA)
 
     oc.must_have(_OPT_KEY_QUANTIFIER, lambda x: x in ["sailfish", "salmon"],
-                 KeyError("Error@circular_RNA_profiling: incorrect quantifier back-end"),
+                 KeyError(
+                     "Error@circular_RNA_profiling: incorrect quantifier back-end"),
                  "the back end quantifier: sailfish or salmon")
 
     oc.one_and_only_one(["-g", "--genomic_seqs_fasta"], os.path.exists,
-                        FileNotFoundError("Error@circular_RNA_profiling: incorrect genomic reference fa file"),
+                        FileNotFoundError(
+                            "Error@circular_RNA_profiling: incorrect genomic reference fa file"),
                         "path to genomic sequence fasta file")
 
     oc.one_and_only_one(["-a", "--annotation"], os.path.exists,
-                        FileNotFoundError("Error@circular_RNA_profiling: incorrect genome annotation file"),
+                        FileNotFoundError(
+                            "Error@circular_RNA_profiling: incorrect genome annotation file"),
                         "path to gene annotation file, ie, .gtf or .gff files")
 
     oc.one_and_only_one(["-c", "--ciri_bsj", "--bed"], os.path.exists,
-                        FileNotFoundError("Error@circular_RNA_profiling: can not find circular detection report"),
+                        FileNotFoundError(
+                            "Error@circular_RNA_profiling: can not find circular detection report"),
                         "path to  circRNA detection (file for ciri, folder for ciri-full) to specify circular RNA")
 
     oc.may_need(_OPT_CIRI_AS_OUTPUT_PREFIX, pysrc.body.cli_opts.is_suitable_path_with_prefix,
-                FileNotFoundError("Error@circular_RNA_profiling: incorrect circular Alternative Splice file prefix"),
+                FileNotFoundError(
+                    "Error@circular_RNA_profiling: incorrect circular Alternative Splice file prefix"),
                 "path prefix to CIRI-AS report of circular exons")
 
     # make sure the path should be a folder
+    oc.may_need(_OPT_KEY_DECOY_FILES, lambda x: all([os.path.exists(y) for y in x.split()]),
+                FileNotFoundError("ERROR@circular_RNA_profiling: unable to find decoy sequences"), "path to decoy sequences for salmon")
 
     oc.must_have("-o", pysrc.body.utilities.make_sure_there_is_a_folder,
-                 FileNotFoundError("Error@circular_RNA_profiling: no place for output"),
+                 FileNotFoundError(
+                     "Error@circular_RNA_profiling: no place for output"),
                  "output folder that contains the index built by sailfish and quantification results")
 
     oc.may_need("--mll", lambda x: x.isdigit(),
-                TypeError("Error@circular_RNA_profiling: mean library length should be a integer"),
+                TypeError(
+                    "Error@circular_RNA_profiling: mean library length should be a integer"),
                 "mean library length, this option is to fix up the effective length.")
 
     oc.may_need("-k", lambda x: x.isdigit(),
-                TypeError("Error@circular_RNA_profiling: k in k mer should be integer"),
+                TypeError(
+                    "Error@circular_RNA_profiling: k in k mer should be integer"),
                 "k-mer size used by sailfish to built index. default is 21")
 
     oc.may_need("-1", os.path.exists,
-                FileNotFoundError("Error@circular_RNA_profiling: no mate1 input seq file"),
+                FileNotFoundError(
+                    "Error@circular_RNA_profiling: no mate1 input seq file"),
                 "path to raw pair-end reads, mate 1")
     oc.may_need("-2", os.path.exists,
-                FileNotFoundError("Error@circular_RNA_profiling: no mate2 input seq file"),
+                FileNotFoundError(
+                    "Error@circular_RNA_profiling: no mate2 input seq file"),
                 "path to raw pair-end reads, mate 2")
     oc.may_need("-r", os.path.exists,
-                FileNotFoundError("Error@circular_RNA_profiling: no single end sequence input file"),
+                FileNotFoundError(
+                    "Error@circular_RNA_profiling: no single end sequence input file"),
                 "path to single-end raw sequencing reads file.")
 
     oc.may_need(_OPT_KEY_ADDITIONAL_CIRC_REF, os.path.exists,
-                FileNotFoundError("Error@circular_RNA_profiling: additional circular reference file not exist"),
+                FileNotFoundError(
+                    "Error@circular_RNA_profiling: additional circular reference file not exist"),
                 "path to additional circular RNA reference file (.fa), ")
 
     oc.may_need(_OPT_KEY_ADDITIONAL_ANNOTATION, os.path.exists,
-                FileNotFoundError("Error@circular_RNA_profiling: additional annotation not exist"),
+                FileNotFoundError(
+                    "Error@circular_RNA_profiling: additional annotation not exist"),
                 "path to additional circular RNA annotation file in gtf format")
 
     oc.may_need(_OPT_KEY_ADDITIONAL_LINEAR_REF, os.path.exists,
-                FileNotFoundError("Error@circular_RNA_profiling: additional linear reference file not exist"),
+                FileNotFoundError(
+                    "Error@circular_RNA_profiling: additional linear reference file not exist"),
                 "path to additional linear RNA reference file(.fa)")
 
     oc.may_need(_OPT_KEY_USE_LINC_EXPLICITLY, lambda x: x in ("T", "F", "True", "False", ""),
-                KeyError("Error@circular_RNA_profiling: incorrect flag to specify whether linc should be explicit"),
+                KeyError(
+                    "Error@circular_RNA_profiling: incorrect flag to specify whether linc should be explicit"),
                 """flag to specify whether linc RNA should be include in quantification result, commenting it out to 
                 set False
                 """)
@@ -173,14 +196,19 @@ def main(path_config, forced_refresh=False):
 
     genomic_annotation = catch_one(circ_profile_config, "-a", "--annotation")
     genome_fa = catch_one(circ_profile_config, "-g", "--genomic_seqs_fasta")
-    circ_detection_report = catch_one(circ_profile_config, "-c", "--bed", "--ciri_bsj")
+    circ_detection_report = catch_one(
+        circ_profile_config, "-c", "--bed", "--ciri_bsj")
 
     output_path = catch_one(circ_profile_config, "-o")
 
     # additional options
     additional_circ_ref = circ_profile_config.get(_OPT_KEY_ADDITIONAL_CIRC_REF)
-    additional_annotation = circ_profile_config.get(_OPT_KEY_ADDITIONAL_ANNOTATION)
-    additional_linear_ref = circ_profile_config.get(_OPT_KEY_ADDITIONAL_LINEAR_REF)
+    additional_annotation = circ_profile_config.get(
+        _OPT_KEY_ADDITIONAL_ANNOTATION)
+    additional_linear_ref = circ_profile_config.get(
+        _OPT_KEY_ADDITIONAL_LINEAR_REF)
+
+    decoy_file_for_salmon = circ_profile_config.get(_OPT_KEY_DECOY_FILES)
     use_linc = _OPT_KEY_USE_LINC_EXPLICITLY in circ_profile_config
     reject_linear = _OPT_KEY_REJECT_LINEAR in circ_profile_config
 
@@ -197,7 +225,8 @@ def main(path_config, forced_refresh=False):
     # 1st, extract the linear sequence
     if not reject_linear:
         if not os.path.exists(spliced_linear_reference) or forced_refresh:
-            _prepare_linear_transcriptome(genome_fa, genomic_annotation, spliced_linear_reference)
+            _prepare_linear_transcriptome(
+                genome_fa, genomic_annotation, spliced_linear_reference)
             _logger.debug("linear RNA from Genomic Sequence is included")
 
     # 2nd, get the circular RNA gtf sequences
@@ -229,8 +258,10 @@ def main(path_config, forced_refresh=False):
     # process additional reference . including linc and custom circular RNA 18-12-21
 
     # todo: we should consider if there are multiple additional reference sequence
-    lst_reference_fa = [circ_reference_seq] if reject_linear else [spliced_linear_reference, circ_reference_seq]
-    lst_annotation = [circular_rna_gtf] if reject_linear else [genomic_annotation, circular_rna_gtf]
+    lst_reference_fa = [circ_reference_seq] if reject_linear else [
+        spliced_linear_reference, circ_reference_seq]
+    lst_annotation = [circular_rna_gtf] if reject_linear else [
+        genomic_annotation, circular_rna_gtf]
 
     if additional_linear_ref:
         lst_reference_fa.extend([single_fa for single_fa in additional_linear_ref.strip().split() if os.path.exists(
@@ -239,7 +270,8 @@ def main(path_config, forced_refresh=False):
     if circular_detection_not_only_bsj:
         _logger.debug("transform ciri_full rebuild fa file")
 
-        ciri_full_rebuild_fa_file = pysrc.wrapper.ciri_full.rebuild_fa_path_under(circ_detection_report)
+        ciri_full_rebuild_fa_file = pysrc.wrapper.ciri_full.rebuild_fa_path_under(
+            circ_detection_report)
 
         ciri_full_rebuild_fa_with_short_name = pysrc.wrapper.ciri_full.summarize_rebuild_fa(
             ciri_full_rebuild_fa_file, os.path.join(output_path, "ciri_full_renamed.fa"))
@@ -252,7 +284,8 @@ def main(path_config, forced_refresh=False):
         lst_reference_fa.append(rebuild_fa_encoded)
 
     if additional_circ_ref:
-        additional_circ_ref_decoded = os.path.join(output_path, "additional_circ_ref.fa")
+        additional_circ_ref_decoded = os.path.join(
+            output_path, "additional_circ_ref.fa")
         pysrc.file_format.fa.convert_all_entries_in_fasta(fa_in=additional_circ_ref,
                                                           fa_out=additional_circ_ref_decoded,
                                                           convert_fun=pysrc.file_format.fa.pad_for_effective_length(
@@ -298,10 +331,14 @@ def main(path_config, forced_refresh=False):
         "--index": path_to_quantifier_index,
     }
 
+    if quantifier is pysrc.wrapper.salmon and decoy_file_for_salmon:
+        index_parameters[_OPT_KEY_DECOY_FILES] = decoy_file_for_salmon
+
     quantifier.index(para_config=index_parameters)
 
     # 7th , do quantification!
-    path_to_quantify_result = os.path.join(output_path, _SUB_DIR_PROFILE_RESULT)
+    path_to_quantify_result = os.path.join(
+        output_path, _SUB_DIR_PROFILE_RESULT)
     if not os.path.exists(path_to_quantify_result):
         os.mkdir(path_to_quantify_result)
 
@@ -324,6 +361,7 @@ def main(path_config, forced_refresh=False):
     if quantifier is pysrc.wrapper.salmon:
         opts_quantifier["--seqBias"] = None
         opts_quantifier["--gcBias"] = None
+        opts_quantifier["--validateMappings"] = ""
 
     quantifier.quantify(para_config=opts_quantifier)
 
@@ -335,32 +373,43 @@ def main(path_config, forced_refresh=False):
 
 def _prepare_circular_rna_annotation(circ_detection_report, circular_rna_gtf, genomic_annotation,
                                      detection_not_only_bsj):
-    if detection_not_only_bsj:  # this means use ciri-full as circRNA detection source.
+    # this means use ciri-full as circRNA detection source.
+    if detection_not_only_bsj:
 
         dir_par = os.path.dirname(circular_rna_gtf)
 
-        _logger.debug("building circRNA using comprehensive information (ciri-full), under :{}".join(circular_rna_gtf))
+        _logger.debug(
+            "building circRNA using comprehensive information (ciri-full), under :{}".join(circular_rna_gtf))
 
-        ciri_full_list_file = pysrc.wrapper.ciri_full.vis_list_path_under(circ_detection_report)
+        ciri_full_list_file = pysrc.wrapper.ciri_full.vis_list_path_under(
+            circ_detection_report)
 
-        ciri_report_path = pysrc.wrapper.ciri_full.ciri_report_under(circ_detection_report)
+        ciri_report_path = pysrc.wrapper.ciri_full.ciri_report_under(
+            circ_detection_report)
 
-        _logger.debug("first, we need BSJ information in {}".format(ciri_report_path))
+        _logger.debug(
+            "first, we need BSJ information in {}".format(ciri_report_path))
         bed_bsj_only = pysrc.wrapper.ciri_full.filter_out_un_touched_circular_rna(ciri_report_path,
                                                                                   ciri_full_list_file, tmp_dir=dir_par)
 
         bsj_only_gtf = os.path.join(dir_par, "bsj_only.gtf")
-        _logger.debug("annotation for BSJ only will be put in : {}".format(bsj_only_gtf))
-        _logger.debug("genomic annotation source is from : {} . ".format(genomic_annotation))
-        _gtf_operator.do_make_gtf_for_circular_prediction_greedy(bed_bsj_only, genomic_annotation, bsj_only_gtf)
+        _logger.debug(
+            "annotation for BSJ only will be put in : {}".format(bsj_only_gtf))
+        _logger.debug(
+            "genomic annotation source is from : {} . ".format(genomic_annotation))
+        _gtf_operator.do_make_gtf_for_circular_prediction_greedy(
+            bed_bsj_only, genomic_annotation, bsj_only_gtf)
 
         partial_gtf = os.path.join(dir_par, "partial_structure.gtf")
-        _logger.debug("circular RNA with partial structure information is in {}".join(partial_gtf))
+        _logger.debug(
+            "circular RNA with partial structure information is in {}".join(partial_gtf))
         pysrc.wrapper.ciri_full.summarize_circ_isoform_structure_marked_break(ciri_full_list_file, genomic_annotation,
                                                                               partial_gtf, dir_par)
 
-        pysrc.body.utilities.do_merge_files(circular_rna_gtf, [bsj_only_gtf, partial_gtf])
-        _logger.debug("the final circular exclusive annotation file is : {} ".format(circular_rna_gtf))
+        pysrc.body.utilities.do_merge_files(
+            circular_rna_gtf, [bsj_only_gtf, partial_gtf])
+        _logger.debug("the final circular exclusive annotation file is : {} ".format(
+            circular_rna_gtf))
 
     else:
         _logger.debug("building circRNA GTF using BSJ information only")
@@ -387,7 +436,8 @@ def _load_to_update_default_options(path_config):
     default_config = pysrc.body.config.load_default_value()
 
     if SECTION_PROFILE_CIRCULAR_RNA in default_config:
-        default_option_section = dict(default_config[SECTION_PROFILE_CIRCULAR_RNA])
+        default_option_section = dict(
+            default_config[SECTION_PROFILE_CIRCULAR_RNA])
         default_option_section.update(user_option_section)
         user_option_section = default_option_section
 
@@ -395,7 +445,8 @@ def _load_to_update_default_options(path_config):
 
 
 def _confirm_quantifier(circ_profile_config):
-    str_quantifier = circ_profile_config.get(_OPT_KEY_QUANTIFIER, _OPT_VALUE_SAILFISH)
+    str_quantifier = circ_profile_config.get(
+        _OPT_KEY_QUANTIFIER, _OPT_VALUE_SAILFISH)
     quantifier = _QUANTIFIER_BACKEND_OF[str_quantifier]
     _logger.debug("using %s as quantification backend" % str_quantifier)
     return quantifier
