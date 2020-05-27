@@ -54,7 +54,8 @@ def which(program):
 
 def check_binary_executable(program_bin):
     if not which(program_bin):
-        raise FileNotFoundError("Error@checking_binary_exe: NO EXECUTABLE BINARY FILE AS {}".format(program_bin))
+        raise FileNotFoundError(
+            "Error@checking_binary_exe: NO EXECUTABLE BINARY FILE AS {}".format(program_bin))
 
 
 def core_numbers_of_cpu():
@@ -143,7 +144,8 @@ def do_merge_files(file_output, list_of_reference):
     with open(file_output, "a") as output_lines:
         for file_name in list_of_reference:
             if file_name == file_output:
-                _logger.info("seems this file will append itself: %s" % file_name)
+                _logger.info(
+                    "seems this file will append itself: %s" % file_name)
             else:
                 with open(file_name) as read1:
                     _logger.info("now adding file: {origin} -> {target} ".format(origin=file_name,
@@ -154,7 +156,8 @@ def do_merge_files(file_output, list_of_reference):
                         line_add_to_output = "%s\n" % line.strip()
 
                         if rear_collision:
-                            line_add_to_output = "\n{}".format(line_add_to_output)
+                            line_add_to_output = "\n{}".format(
+                                line_add_to_output)
                             rear_collision = False
 
                         output_lines.write(line_add_to_output)

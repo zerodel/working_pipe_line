@@ -43,6 +43,8 @@ _OPT_KEY_ADDITIONAL_LINEAR_REF = "additional_linear_ref"
 
 _OPT_KEY_ADDITIONAL_ANNOTATION = "additional_annotation"
 
+_OPT_KEY_PRESERVE = "preserved_id_list"
+
 _OPT_KEY_USE_LINC_EXPLICITLY = "flag_use_linc_explicitly"
 
 _OPT_KEY_REJECT_LINEAR = "flag_reject_linear"
@@ -105,6 +107,9 @@ def _option_check_main_interface(opts=None):
     # make sure the path should be a folder
     oc.may_need(_OPT_KEY_DECOY_FILES, lambda x: all([os.path.exists(y) for y in x.split()]),
                 FileNotFoundError("ERROR@circular_RNA_profiling: unable to find decoy sequences"), "path to decoy sequences for salmon")
+
+    oc.may_need(_OPT_KEY_PRESERVE, lambda x: all([os.path.exists(y) for y in x.split()]),
+                FileNotFoundError("ERROR@circular_RNA_profiling: unable to find preserved id list"), "path to preserved id list ")
 
     oc.must_have("-o", pysrc.body.utilities.make_sure_there_is_a_folder,
                  FileNotFoundError(
@@ -184,6 +189,24 @@ def __determine_kmer_length(obj_circ_profile):
     return kmer_length
 
 
+def _filter_gtf(gtf_in, by_what, gtf_out):
+    id_pool = []
+    with open(by_what) as perserve_it:
+        for line in perserve_it:
+            id_pool.append(line.strip())
+
+    lines_output = []
+    with open(gtf_in) as input:
+        for line in input:
+            hit = any([x in line for x in id_pool])
+            is_exon = str.split(line)[3] == "exon"
+            if hit and is_exon:
+                lines_output.append(line)
+
+    with open(gtf_out, "w") as output:
+        output.writelines(lines_output)
+
+
 def main(path_config, forced_refresh=False):
     whole_config = pysrc.body.config.config(path_config)
     circ_profile_config = _load_to_update_default_options(path_config)
@@ -211,6 +234,8 @@ def main(path_config, forced_refresh=False):
     decoy_file_for_salmon = circ_profile_config.get(_OPT_KEY_DECOY_FILES)
     use_linc = _OPT_KEY_USE_LINC_EXPLICITLY in circ_profile_config
     reject_linear = _OPT_KEY_REJECT_LINEAR in circ_profile_config
+
+    preserved_id_file = circ_profile_config.get(_OPT_KEY_PRESERVE)
 
     # assign file path
     spliced_linear_reference = os.path.join(output_path, "ref_linear.fa")
@@ -306,6 +331,23 @@ def main(path_config, forced_refresh=False):
                                                             genomic_seq=genome_fa,
                                                             target_fa=linc_reference_seq)
         lst_reference_fa.append(linc_reference_seq)
+
+    if preserved_id_file:
+        # prepare gtf file
+        preserved_annotation = os.path.join(output_path, "preserved.gtf")
+        _logger.debug("extract annotation for preserved, and store in {}".format(
+            preserved_annotation))
+        _filter_gtf(genomic_annotation, preserved_id_file,
+                    preserved_annotation)
+
+        preserved_fa = os.path.join(output_path, "preserved.fa")
+        pysrc.wrapper.gffread.do_extract_non_coding_transcript(
+            preserved_annotation, genome_fa, preserved_fa)
+        _logger.debug(
+            "sequence for preserved will be stored in {}".format(preserved_fa))
+
+        lst_annotation.append(preserved_annotation)
+        lst_reference_fa.append(preserved_fa)
 
     # 5th , combined those fa files
     final_refer = os.path.join(output_path, "final.fa")
