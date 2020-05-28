@@ -350,7 +350,8 @@ def main(path_config, forced_refresh=False):
 
         lst_annotation.append(preserved_annotation)
         lst_reference_fa.append(preserved_fa)
-
+    import pdb
+    pdb.set_trace()
     # 5th , combined those fa files
     final_refer = os.path.join(output_path, "final.fa")
     # pysrc.body.utilities.do_merge_files(final_refer, lst_reference_fa)
