@@ -139,7 +139,8 @@ def last_line_of(some_file):
 
 
 def do_merge_files(file_output, list_of_reference):
-    last_line = last_line_of(file_output)
+    last_line = last_line_of(
+        file_output) if os.path.exists(file_output) else ""
     rear_collision = len(last_line) > 0 and not last_line.endswith("\n")
     with open(file_output, "a") as output_lines:
         for file_name in list_of_reference:
