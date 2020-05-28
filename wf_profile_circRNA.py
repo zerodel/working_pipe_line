@@ -196,15 +196,15 @@ def _filter_gtf(gtf_in, by_what, gtf_out):
             id_pool.append(line.strip())
 
     lines_output = []
-    with open(gtf_in) as input:
-        for line in input:
+    with open(gtf_in) as input_gtf:
+        for line in input_gtf:
             hit = any([x in line for x in id_pool])
             is_exon = line.strip().split()[3] == "exon"
             if hit and is_exon:
                 lines_output.append(line)
 
-    with open(gtf_out, "w") as output:
-        output.writelines(lines_output)
+    with open(gtf_out, "w") as output_gtf:
+        output_gtf.writelines(lines_output)
 
 
 def main(path_config, forced_refresh=False):
