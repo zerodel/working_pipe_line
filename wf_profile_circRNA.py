@@ -198,8 +198,10 @@ def _filter_gtf(gtf_in, by_what, gtf_out):
     lines_output = []
     with open(gtf_in) as input_gtf:
         for line in input_gtf:
+            if line.startswith("#"):
+                continue
             hit = any([x in line for x in id_pool])
-            is_exon = line.strip().split()[3] == "exon"
+            is_exon = line.strip().split()[2] == "exon"
             if hit and is_exon:
                 lines_output.append(line)
 
