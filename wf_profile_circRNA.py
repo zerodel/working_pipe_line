@@ -199,7 +199,7 @@ def _filter_gtf(gtf_in, by_what, gtf_out):
     with open(gtf_in) as input:
         for line in input:
             hit = any([x in line for x in id_pool])
-            is_exon = str.split(line)[3] == "exon"
+            is_exon = line.strip().split()[3] == "exon"
             if hit and is_exon:
                 lines_output.append(line)
 
