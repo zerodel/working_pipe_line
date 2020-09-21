@@ -205,9 +205,10 @@ def detect(para_config=None, **kwargs):
     # run ciri2
     # get default setting dict
     ciri_args_dict = dict(pysrc.body.config.load_or_update_option_section(
-        pysrc.wrapper.ciri.SECTION_DETECT))
+        pysrc.wrapper.ciri2.SECTION_DETECT))
 
     # substitute those ciri arguments
+    ciri_args_dict["bwa_bin"] = bwa_path
     ciri_args_dict["bwa_index"] = ref
     ciri_args_dict["ciri_path"] = ciri_path
     ciri_args_dict["--in"] = sam_file

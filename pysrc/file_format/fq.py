@@ -22,21 +22,20 @@ def is_pair_end_fastq_id_identical(fq1_path, fq2_path):
         counter += 1
         if counter > num_id:
             return True
-        if r1.id != r2.id:  # or (str(r1.description).strip() != str(r2.description).strip()):
+        # or (str(r1.description).strip() != str(r2.description).strip()):
+        if r1.id != r2.id:
             return False
 
     if 0 == counter:
-        raise KeyError("Error@fq_checking_id_style: empty fastq files or wrong file format.")
+        raise KeyError(
+            "Error@fq_checking_id_style: empty fastq files or wrong file format.")
     else:
         return True
 
 
 def get_read_length(fq):
     # here we assume all reads in a single fastq file shares the same length .
-    fq_parser = Bo.parse(fq, "fastq")
-    one_read_entry = next(fq_parser)
-    fq_parser.close()
-    return len(one_read_entry.seq)
+    return len(next(Bo.parse(fq, "fastq")).seq)
 
 
 if __name__ == "__main__":
