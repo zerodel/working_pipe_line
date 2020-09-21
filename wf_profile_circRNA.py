@@ -284,7 +284,6 @@ def main(path_config, forced_refresh=False):
     # ###### ========================================================
     # process additional reference . including linc and custom circular RNA 18-12-21
 
-    # todo: we should consider if there are multiple additional reference sequence
     lst_reference_fa = [circ_reference_seq] if reject_linear else [
         spliced_linear_reference, circ_reference_seq]
     lst_annotation = [circular_rna_gtf] if reject_linear else [
@@ -300,20 +299,38 @@ def main(path_config, forced_refresh=False):
         ciri_full_rebuild_fa_file = pysrc.wrapper.ciri_full.rebuild_fa_path_under(
             circ_detection_report)
 
-        ciri_full_rebuild_fa_with_short_name = pysrc.wrapper.ciri_full.summarize_rebuild_fa(
-            ciri_full_rebuild_fa_file, os.path.join(output_path, "ciri_full_renamed.fa"))
-        rebuild_fa_encoded = os.path.join(output_path, "rebuild_seq.fa")
+        if ciri_full_rebuild_fa_file:
+            _logger.debug("ciri-full rebuild circular RNA file found in {}".format(ciri_full_rebuild_fa_file))
+            ciri_full_rebuild_fa_with_short_name = pysrc.wrapper.ciri_full.summarize_rebuild_fa(
+                ciri_full_rebuild_fa_file, os.path.join(output_path, "ciri_full_renamed.fa"))
 
-        pysrc.file_format.fa.convert_all_entries_in_fasta(fa_in=ciri_full_rebuild_fa_with_short_name,
-                                                          fa_out=rebuild_fa_encoded,
-                                                          convert_fun=pysrc.file_format.fa.pad_for_effective_length(
-                                                              mean_library_length))
-        lst_reference_fa.append(rebuild_fa_encoded)
+            # output of this step.
+            rebuild_fa_encoded = os.path.join(output_path, "rebuild_seq.fa")
+
+            # need adapter-k
+            pysrc.file_format.fa.convert_all_entries_in_fasta(fa_in=ciri_full_rebuild_fa_with_short_name,
+                                                              fa_out=ciri_full_rebuild_fa_with_short_name,
+                                                              convert_fun=pysrc.file_format.fa.make_adapter(k))
+
+            pysrc.file_format.fa.convert_all_entries_in_fasta(fa_in=ciri_full_rebuild_fa_with_short_name,
+                                                              fa_out=rebuild_fa_encoded,
+                                                              convert_fun=pysrc.file_format.fa.pad_for_effective_length(
+                                                                  mean_library_length))
+            lst_reference_fa.append(rebuild_fa_encoded)
+
+        else:
+            _logger.warning(" NO CIRI-FULL rebuild file found under {}".format(circ_detection_report))
 
     if additional_circ_ref:
         additional_circ_ref_decoded = os.path.join(
             output_path, "additional_circ_ref.fa")
+
+        # here also need adapter-k
         pysrc.file_format.fa.convert_all_entries_in_fasta(fa_in=additional_circ_ref,
+                                                          fa_out=additional_circ_ref_decoded,
+                                                          convert_fun=pysrc.file_format.fa.make_adapter(k))
+
+        pysrc.file_format.fa.convert_all_entries_in_fasta(fa_in=additional_circ_ref_decoded,
                                                           fa_out=additional_circ_ref_decoded,
                                                           convert_fun=pysrc.file_format.fa.pad_for_effective_length(
                                                               mean_library_length))

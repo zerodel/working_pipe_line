@@ -324,9 +324,16 @@ def detection_sub_dir_under(dir_out):
 
 def rebuild_fa_path_under(dir_out):
     your_sub_dir = vis_sub_dir_under(dir_out)
+
     fa_path = [x for x in os.listdir(your_sub_dir) if x.endswith(
         ".fa") or x.endswith(".fasta")]
-    return os.path.join(your_sub_dir, fa_path[0])
+
+    if fa_path:
+        return os.path.join(your_sub_dir, fa_path[0])
+    else:
+        _logger.warning("""NO FA File Found in ciri-full result : {} , 
+        we hope the stdout.list file of ciri-full do not mess it up """.format(your_sub_dir))
+        return None
 
 
 def vis_list_path_under(dir_out):
