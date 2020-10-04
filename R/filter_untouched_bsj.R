@@ -66,6 +66,7 @@ load_ciri_report <- function(path.ciri, ...) {
 cat(paste0("\n", "trim CIRI BSJ into bed file "))
 
 given_args <- commandArgs(trailingOnly = T)
+
 if (length(given_args) < 3) {
     stop(
         paste0(
@@ -76,11 +77,12 @@ if (length(given_args) < 3) {
     )
 }
 
+
 ciri_report_path <- given_args[1]
 list_path <- given_args[2]
 output_bed_path <- given_args[3]
 
-
+only_exon_circ_remain <- length(given_args) > 3
 
 # loading data -----------------------------------------------------------
 #
@@ -91,8 +93,10 @@ output_bed_path <- given_args[3]
 
 
 if (!file.exists(ciri_report_path)) {
-    stop(paste0("ERROR: NO ciri report file in ", ":", ciri_report_path),
-         "\n")
+    stop(
+        paste0("ERROR: NO ciri report file in ", ":", ciri_report_path),
+        "\n"
+    )
 }
 
 if (!file.exists(list_path)) {
@@ -110,6 +114,9 @@ cat(paste0("\n", dim(raw_list)[1], " circRNA with inner structure detected\n "))
 filtered_ciri <-
     base::subset(raw_ciri, !raw_ciri$circRNA_ID %in% raw_list$bsj)
 
+if (only_exon_circ_remain) {
+    filtered_ciri <- base::subset(filtered_ciri, filtered_ciri$circRNA_type == "exon")
+}
 
 bed_out <- with(
     filtered_ciri,
@@ -136,7 +143,6 @@ write.table(
     row.names = F,
     quote = F,
     sep = "\t",
-    
 )
 
-cat(paste0("\n", "output file in : ", output_bed_path, "\n" ))
+cat(paste0("\n", "output file in : ", output_bed_path, "\n"))

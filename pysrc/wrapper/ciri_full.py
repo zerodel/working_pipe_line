@@ -232,7 +232,6 @@ def detect(para_config=None, **kwargs):
 
     _logger.debug("CIRI part finished ....")
 
-    # todo: should have some check on whether ciri works
     if not pysrc.file_format.ciri_entry.is_ciri_file_intact(ciri_file):
         _logger.warning(
             "WARNING: CIRI may meet some ERROR , report file : {}".format(ciri_file))
@@ -300,13 +299,18 @@ def detect(para_config=None, **kwargs):
         "command vis of ciri-full is {cmd_vis}".format(cmd_vis=cmd_vis))
     pysrc.body.worker.run(cmd_vis)
 
-    fa_reconstructed = glob.glob(os.path.join(sub_dir_vis, "*.fa"))
-    _logger.debug("after phase vis , we got fa files as : {}".format(
-        str(fa_reconstructed)))
-    _logger.debug(
-        "try to combine reconstructed fa file into one file: {}....".format(fa_target))
-    pysrc.file_format.fa.incremental_updating(fa_target, fa_reconstructed)
-
+    # after ciri-vis, try to extract the reconstructed FA
+    if fa_target:
+        fa_reconstructed = glob.glob(os.path.join(sub_dir_vis, "*.fa"))
+        _logger.debug("after phase vis , we got fa files as : {}".format(
+            str(fa_reconstructed)))
+        _logger.debug(
+            "try to combine reconstructed fa file into one file: {}....".format(fa_target))
+        try:
+            pysrc.file_format.fa.incremental_updating(fa_target, fa_reconstructed)
+        except Exception as e:
+            _logger.error("error happens while extracting circular RNA at {}".format(fa_target))
+            
     return opts_raw
 
 
@@ -437,7 +441,7 @@ def translate_vis_list(path_vis_list, tmp_dir=""):
     return path_bed_circexon, path_bed_blank
 
 
-def filter_out_un_touched_circular_rna(path_bed_ciri, path_vis_list, tmp_dir=""):
+def filter_out_un_touched_circular_rna(path_bed_ciri, path_vis_list, tmp_dir="", exon_only=True):
     _logger.debug(
         "start filter out those BSJ which contains partial inner structure information")
 
@@ -452,8 +456,12 @@ def filter_out_un_touched_circular_rna(path_bed_ciri, path_vis_list, tmp_dir="")
 
     _logger.debug("output bed file will in : {}".format(path_bed_out))
 
-    cmd_r = " ".join(["Rscript", path_r_script, path_bed_ciri,
-                      path_vis_list, path_bed_out])
+    r_args = ["Rscript", path_r_script, path_bed_ciri,
+                      path_vis_list, path_bed_out]
+    if exon_only:
+        r_args.append("T")
+
+    cmd_r = " ".join(r_args)
 
     _logger.debug("""external cmd for filter ciri bsj is:  {}""".format(cmd_r))
     pysrc.body.worker.run(cmd_r)

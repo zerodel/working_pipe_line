@@ -440,7 +440,7 @@ def _prepare_circular_rna_annotation(circ_detection_report, circular_rna_gtf, ge
         dir_par = os.path.dirname(circular_rna_gtf)
 
         _logger.debug(
-            "building circRNA using comprehensive information (ciri-full), under :{}".join(circular_rna_gtf))
+            "building circRNA using comprehensive information (ciri-full) from :{}".join(circular_rna_gtf))
 
         ciri_full_list_file = pysrc.wrapper.ciri_full.vis_list_path_under(
             circ_detection_report)
@@ -451,7 +451,9 @@ def _prepare_circular_rna_annotation(circ_detection_report, circular_rna_gtf, ge
         _logger.debug(
             "first, we need BSJ information in {}".format(ciri_report_path))
         bed_bsj_only = pysrc.wrapper.ciri_full.filter_out_un_touched_circular_rna(ciri_report_path,
-                                                                                  ciri_full_list_file, tmp_dir=dir_par)
+                                                                                  ciri_full_list_file,
+                                                                                  tmp_dir=dir_par,
+                                                                                  exon_only=False)
 
         bsj_only_gtf = os.path.join(dir_par, "bsj_only.gtf")
         _logger.debug(
