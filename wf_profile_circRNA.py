@@ -453,7 +453,7 @@ def _prepare_circular_rna_annotation(circ_detection_report, circular_rna_gtf, ge
         bed_bsj_only = pysrc.wrapper.ciri_full.filter_out_un_touched_circular_rna(ciri_report_path,
                                                                                   ciri_full_list_file,
                                                                                   tmp_dir=dir_par,
-                                                                                  exon_only=False)
+                                                                                  exon_only=True)
 
         bsj_only_gtf = os.path.join(dir_par, "bsj_only.gtf")
         _logger.debug(
