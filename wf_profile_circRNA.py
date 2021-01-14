@@ -273,7 +273,8 @@ def main(path_config, forced_refresh=False):
     mean_library_length = int(circ_profile_config["--mll"]) if "--mll" in circ_profile_config and \
                                                                circ_profile_config[{"--mll"}] else 150
 
-    _add_adapter_k_mll(circ_reference_seq, k, mean_library_length)
+    _add_adapter_k_mll(circ_reference_seq,
+                       circ_reference_seq, k, mean_library_length)
 
     # ###### ========================================================
     # process additional reference . including linc and custom circular RNA 18-12-21
