@@ -268,18 +268,12 @@ def main(path_config, forced_refresh=False):
                                                     output=circ_reference_seq)
 
     # 4th, do operations on circular RNA reference .lincRNA are treated as linear mRNA
-    pysrc.file_format.fa.convert_all_entries_in_fasta(fa_in=circ_reference_seq,
-                                                      fa_out=circ_reference_seq,
-                                                      convert_fun=pysrc.file_format.fa.make_adapter(k))
 
-    # decorate sequence , we set the mean of effective length to 150.
+    # mean of effective length use 150 as default
     mean_library_length = int(circ_profile_config["--mll"]) if "--mll" in circ_profile_config and \
                                                                circ_profile_config[{"--mll"}] else 150
 
-    pysrc.file_format.fa.convert_all_entries_in_fasta(fa_in=circ_reference_seq,
-                                                      fa_out=circ_reference_seq,
-                                                      convert_fun=pysrc.file_format.fa.pad_for_effective_length(
-                                                          mean_library_length))
+    _add_adapter_k_mll(circ_reference_seq, k, mean_library_length)
 
     # ###### ========================================================
     # process additional reference . including linc and custom circular RNA 18-12-21
@@ -300,7 +294,8 @@ def main(path_config, forced_refresh=False):
             circ_detection_report)
 
         if ciri_full_rebuild_fa_file:
-            _logger.debug("ciri-full rebuild circular RNA file found in {}".format(ciri_full_rebuild_fa_file))
+            _logger.debug(
+                "ciri-full rebuild circular RNA file found in {}".format(ciri_full_rebuild_fa_file))
             ciri_full_rebuild_fa_with_short_name = pysrc.wrapper.ciri_full.summarize_rebuild_fa(
                 ciri_full_rebuild_fa_file, os.path.join(output_path, "ciri_full_renamed.fa"))
 
@@ -308,32 +303,23 @@ def main(path_config, forced_refresh=False):
             rebuild_fa_encoded = os.path.join(output_path, "rebuild_seq.fa")
 
             # need adapter-k
-            pysrc.file_format.fa.convert_all_entries_in_fasta(fa_in=ciri_full_rebuild_fa_with_short_name,
-                                                              fa_out=ciri_full_rebuild_fa_with_short_name,
-                                                              convert_fun=pysrc.file_format.fa.make_adapter(k))
 
-            pysrc.file_format.fa.convert_all_entries_in_fasta(fa_in=ciri_full_rebuild_fa_with_short_name,
-                                                              fa_out=rebuild_fa_encoded,
-                                                              convert_fun=pysrc.file_format.fa.pad_for_effective_length(
-                                                                  mean_library_length))
+            _add_adapter_k_mll(ciri_full_rebuild_fa_with_short_name, rebuild_fa_encoded, k, mean_library_length)
+
             lst_reference_fa.append(rebuild_fa_encoded)
 
         else:
-            _logger.warning(" NO CIRI-FULL rebuild file found under {}".format(circ_detection_report))
+            _logger.warning(
+                " NO CIRI-FULL rebuild file found under {}".format(circ_detection_report))
 
     if additional_circ_ref:
         additional_circ_ref_decoded = os.path.join(
             output_path, "additional_circ_ref.fa")
 
         # here also need adapter-k
-        pysrc.file_format.fa.convert_all_entries_in_fasta(fa_in=additional_circ_ref,
-                                                          fa_out=additional_circ_ref_decoded,
-                                                          convert_fun=pysrc.file_format.fa.make_adapter(k))
 
-        pysrc.file_format.fa.convert_all_entries_in_fasta(fa_in=additional_circ_ref_decoded,
-                                                          fa_out=additional_circ_ref_decoded,
-                                                          convert_fun=pysrc.file_format.fa.pad_for_effective_length(
-                                                              mean_library_length))
+        _add_adapter_k_mll(additional_circ_ref, additional_circ_ref_decoded, k, mean_library_length)
+
         lst_reference_fa.append(additional_circ_ref_decoded)
 
     if additional_annotation:
@@ -424,13 +410,32 @@ def main(path_config, forced_refresh=False):
         opts_quantifier["--gcBias"] = None
         opts_quantifier["--validateMappings"] = ""
 
-    quantifier.quantify(para_config=opts_quantifier)
+    quantifier.quantify(para_config=opts_quantifier) # do qunatification
 
+    _logger.debug("All finished....... exiting ...")
     # pysrc.sub_module.summary_quant.aggregate_isoform_quantify_result(
     #     quant_sf=os.path.join(path_to_quantify_result, "quant.sf"),
     #     summarized_output=os.path.join(path_to_quantify_result, "summarized.quant"),
     #     gtf_annotation=final_annotation)
 
+def _add_adapter_k_mll(raw_circ_seq, decorated_seq, k, mean_library_length):
+    seq_backup_dest = ".".join(raw_circ_seq, ".raw_seq")
+    shutil.copyfile(raw_circ_seq, seq_backup_dest)
+    if os.path.exists(seq_backup_dest):
+        _logger.debug("sequence file {src}  has been backed up in {dest}".format(raw_circ_seq,
+                                                                                seq_backup_dest))
+    else:
+        _logger.error("backup failed for {}".format(raw_circ_seq))
+    
+    pysrc.file_format.fa.convert_all_entries_in_fasta(fa_in=raw_circ_seq,
+                                                      fa_out=decorated_seq,
+                                                      convert_fun=pysrc.file_format.fa.make_adapter(k))
+
+    pysrc.file_format.fa.convert_all_entries_in_fasta(fa_in=decorated_seq,
+                                                      fa_out=decorated_seq,
+                                                      convert_fun=pysrc.file_format.fa.pad_for_effective_length(
+                                                          mean_library_length))
+    _logger.debug("{} has been decorated".format(raw_circ_seq))
 
 def _prepare_circular_rna_annotation(circ_detection_report, circular_rna_gtf, genomic_annotation,
                                      detection_not_only_bsj):
