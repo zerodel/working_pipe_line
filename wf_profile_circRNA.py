@@ -420,7 +420,7 @@ def main(path_config, forced_refresh=False):
     #     gtf_annotation=final_annotation)
 
 def _add_adapter_k_mll(raw_circ_seq, decorated_seq, k, mean_library_length):
-    seq_backup_dest = ".".join(raw_circ_seq, ".raw_seq")
+    seq_backup_dest = raw_circ_seq + ".raw_seq"
     shutil.copyfile(raw_circ_seq, seq_backup_dest)
     if os.path.exists(seq_backup_dest):
         _logger.debug("sequence file {src}  has been backed up in {dest}".format(raw_circ_seq,
